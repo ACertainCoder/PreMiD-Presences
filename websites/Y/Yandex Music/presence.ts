@@ -1,77 +1,41 @@
+import { ActivityType, Assets, getTimestamps, timestampFromFormat } from 'premid'
+
 const presence = new Presence({
-		clientId: "745261937092198532",
-	}),
-	strings = presence.getStrings({
-		playing: "general.playing",
-		pause: "general.paused",
-	});
+  clientId: '745261937092198532',
+})
 
-let presenceData: PresenceData;
+presence.on('UpdateData', async () => {
+  if (
+    !document.querySelector('[*|href="/icons/sprite.svg#pause_filled_l"]:not([href])')
+    || !navigator.mediaSession.metadata
+  ) {
+    return presence.clearActivity()
+  }
 
-function getMillisecondsFromString(timeString: string): number {
-	const parsedText = timeString.split(":");
-	return (Number(parsedText[0]) * 60 + Number(parsedText[1])) * 1000;
-}
+  const largeImageKey = navigator.mediaSession.metadata.artwork
+    ? navigator.mediaSession.metadata.artwork.at(-1)?.src
+    : 'https://cdn.rcd.gg/PreMiD/websites/Y/Yandex%20Music/assets/logo.png'
+  const timePassed = document.querySelector('[class*="Timecode_root_start"]')?.textContent
+  const [currentTime, duration] = [
+    timestampFromFormat(timePassed!),
+    timestampFromFormat(
+      document.querySelector('[class*="Timecode_root_end"]')!.textContent!,
+    ),
+  ]
+  const [startTimestamp, endTimestamp] = getTimestamps(
+    currentTime,
+    duration,
+  )
+  const presenceData: PresenceData = {
+    type: ActivityType.Listening,
+    smallImageKey: Assets.Play,
+    largeImageKey,
+    details: navigator.mediaSession.metadata.title,
+    state: navigator.mediaSession.metadata.artist
+      || navigator.mediaSession.metadata.album,
+    startTimestamp,
+    endTimestamp,
+  }
 
-function isPodcast(): boolean {
-	return !!document.querySelectorAll(".track__podcast")[0];
-}
-
-setInterval(async () => {
-	const startedAt =
-			Date.now() -
-			getMillisecondsFromString(
-				document.querySelectorAll<HTMLElement>(".progress__left")[0].textContent
-			),
-		playing =
-			document.querySelectorAll(".player-controls__btn_pause").length === 2;
-
-	let artists;
-	if (isPodcast()) {
-		artists =
-			document.querySelectorAll<HTMLElement>(".track__podcast")[0].textContent;
-	} else {
-		artists =
-			document.querySelectorAll<HTMLElement>(".track__artists")[0].textContent;
-	}
-
-	const coverImageSizes = document
-			.querySelector(".track")
-			.querySelector<HTMLImageElement>(".entity-cover__image")
-			.srcset // get all images of all sizes
-			.split(", "),
-		coverImage = coverImageSizes
-			.at(-1) // get the last one (the best one)
-			.split(" ")
-			.at(0),
-		largeImageKey = coverImage
-			? `https:${coverImage}`
-			: "https://cdn.rcd.gg/PreMiD/websites/Y/Yandex%20Music/assets/logo.png";
-
-	presenceData = {
-		largeImageKey,
-		smallImageKey: playing ? Assets.Play : Assets.Pause,
-		smallImageText: playing ? (await strings).playing : (await strings).pause,
-		details:
-			document.querySelectorAll<HTMLElement>(".track__title")[0].textContent,
-		state: artists,
-		startTimestamp: startedAt,
-		endTimestamp:
-			startedAt +
-			getMillisecondsFromString(
-				document.querySelectorAll<HTMLElement>(".progress__right")[0]
-					.textContent
-			),
-	};
-
-	if (!playing) {
-		delete presenceData.startTimestamp;
-		delete presenceData.endTimestamp;
-	}
-}, 1000);
-
-presence.on("UpdateData", () => {
-	if (document.querySelectorAll(".track__title").length !== 0)
-		presence.setActivity(presenceData);
-	else presence.setActivity();
-});
+  presence.setActivity(presenceData)
+})

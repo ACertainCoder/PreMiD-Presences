@@ -1,138 +1,134 @@
+import { Assets, getTimestamps } from 'premid'
+
 const presence = new Presence({
-		clientId: "703697546794631209",
-	}),
-	elapsed = Math.floor(Date.now() / 1000);
+  clientId: '1405254120809566218',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-presence.on("UpdateData", () => {
-	let video: HTMLVideoElement, live;
-	const path = window.location.pathname,
-		presenceData: PresenceData = {
-			largeImageKey:
-				"https://cdn.rcd.gg/PreMiD/websites/R/Rooster%20Teeth/assets/logo.png",
-			details: "Browsing Rooster Teeth",
-			startTimestamp: elapsed,
-		};
-	if (window.location.hash.includes("#search?term=")) {
-		presenceData.details = "Searching For:";
-		presenceData.state =
-			document.querySelector<HTMLInputElement>(".search__input").value;
-	} else if (path.includes("/live/rt-tv")) {
-		video = document.querySelector(".vjs-tech");
-		presenceData.details = document
-			.querySelector(
-				".livestream-card.livestream-schedule-item-fade-enter-done"
-			)
-			.querySelector(".livestream-show").textContent;
-		presenceData.details += ` ${
-			document
-				.querySelector(
-					".livestream-card.livestream-schedule-item-fade-enter-done"
-				)
-				.querySelector(".livestream-title").textContent
-		}`;
-		presenceData.state = "RT-TV";
-		live = true;
-	} else if (document.querySelector(".vjs-tech")) {
-		live = false;
-		video = document.querySelector(".vjs-tech");
-		if (document.querySelector(".video-details__heading")) {
-			presenceData.details = document.querySelector(
-				".video-details__title"
-			).textContent;
-			presenceData.state = document.querySelector(
-				".video-details__show"
-			).textContent;
-		} else {
-			presenceData.details =
-				document.querySelector(".player-title").textContent;
-			presenceData.state = "Miniplayer";
-		}
-	} else if (path.includes("/watch")) {
-		if (document.querySelector(".video-details__heading")) {
-			presenceData.details = document.querySelector(
-				".video-details__title"
-			).textContent;
-			presenceData.state = document.querySelector(
-				".video-details__show"
-			).textContent;
-		} else {
-			presenceData.details =
-				document.querySelector(".player-title").textContent;
-			presenceData.state = "Miniplayer";
-		}
-	} else if (path.includes("/schedule")) {
-		presenceData.details = "Viewing Schedule";
-		for (const x in document.querySelectorAll(".schedule-day")) {
-			// eslint-disable-next-line no-prototype-builtins
-			if (document.querySelectorAll(".schedule-day").hasOwnProperty(x)) {
-				const position = document
-					.querySelectorAll(".schedule-day")
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/R/Rooster%20Teeth/assets/logo.png',
+}
 
-					[x].getBoundingClientRect();
-				if (position.top < window.innerHeight && position.bottom >= 0) {
-					presenceData.state = document
-						.querySelectorAll(".schedule-day")
+let iFrameData: {
+  video?: {
+    paused?: boolean
+    currentTime?: number
+    duration?: number
+    title?: string
+  }
+} = {}
 
-						[x].querySelector(".schedule-day__heading")
-						.textContent.toLowerCase();
-					presenceData.state =
-						presenceData.state.substr(0, 1).toUpperCase() +
-						presenceData.state.substr(1);
-					break;
-				}
-			}
-		}
-	} else if (path.includes("/series/")) {
-		presenceData.details = "Browsing Through Videos Of:";
-		presenceData.state = document.querySelector(".featured-title").textContent;
-	} else if (path.includes("/channel/")) {
-		presenceData.details = "Viewing Channel:";
-		[, presenceData.state] = document
-			.querySelector(".carousel-container")
-			.querySelector(".carousel-title")
-			.textContent.split("RECENT EPISODES FROM ");
-	} else if (path.includes("/series")) presenceData.details = "Browsing Series";
-	else if (path.includes("/episodes")) {
-		if (new URLSearchParams(window.location.search).get("channel_id")) {
-			presenceData.details = "Browsing Episodes Of:";
-			presenceData.state = document
-				.querySelector(".dropdown-label")
-				.textContent.split("FILTER (")[1]
-				.replace(")", "");
-		} else presenceData.details = "Browsing Episodes";
-	} else if (path.includes("/g/") && !path.includes("/g/all")) {
-		presenceData.details = "Browsing Group:";
-		if (path.includes("explore")) presenceData.state = "Explore";
-		else {
-			presenceData.state = document
-				.querySelector(".content-sidebar")
-				.querySelector(".banner-title").textContent;
-		}
-	} else if (path.includes("/g")) {
-		presenceData.details = `Browsing ${
-			path.includes("/g/all") ? "All " : ""
-		}Groups`;
-	}
-	if (video) {
-		if (live) {
-			presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Live;
-			presenceData.smallImageText = video.paused
-				? "Live Playback paused"
-				: "Live";
-		} else {
-			presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play;
-			presenceData.smallImageText = video.paused
-				? "Playback paused"
-				: "Playing back";
-			if (!video.paused) {
-				presenceData.endTimestamp =
-					Math.floor(Date.now() / 1000) -
-					Math.floor(video.currentTime) +
-					Math.floor(video.duration);
-			} else delete presenceData.startTimestamp;
-		}
-	}
+presence.on('iFrameData', (data) => {
+  iFrameData = data
+})
 
-	if (presenceData.details) presence.setActivity(presenceData);
-	else presence.setActivity();
-});
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    name: 'Rooster Teeth',
+    largeImageKey: ActivityAssets.Logo,
+    startTimestamp: browsingTimestamp,
+  }
+
+  const { pathname, href } = document.location
+  const buttons = await presence.getSetting<boolean>('buttons')
+
+  switch (pathname.split('/')[1]) {
+    case 'about':
+      Object.assign(presenceData)
+      presenceData.details = 'Browsing About RT'
+      presenceData.smallImageKey = Assets.Reading
+      break
+
+    case 'community':
+      Object.assign(presenceData)
+
+      presenceData.smallImageKey = Assets.Reading
+
+      if (pathname.split('/')[4]) {
+        presenceData.details = 'Reading forum post:'
+        presenceData.state = document.querySelector('h2')?.textContent
+
+        if (buttons) {
+          presenceData.buttons = [
+            {
+              label: 'Read post',
+              url: href,
+            },
+          ]
+        }
+      }
+      else {
+        presenceData.details = 'Browsing Community Forum'
+      }
+      break
+
+    case 'series':
+      Object.assign(presenceData)
+
+      presenceData.smallImageKey = Assets.Search
+
+      if (pathname.split('/')[2]) {
+        presenceData.details = 'Browsing through episodes of:'
+        presenceData.state = document.querySelector('title')
+      }
+      else {
+        presenceData.details = 'Browsing Shows'
+      }
+      break
+
+    case 'watch':
+      Object.assign(presenceData)
+      if (iFrameData.video) {
+        const { paused, currentTime, duration } = iFrameData.video
+
+        presenceData.details = document.querySelector('h1')?.textContent
+        presenceData.state = document.querySelector('main a span > div > span')?.textContent
+
+        if (currentTime && duration && !paused) {
+          [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestamps(currentTime, duration)
+          presenceData.smallImageKey = Assets.Play
+          presenceData.smallImageText = 'Playing'
+        }
+        else {
+          presenceData.smallImageKey = Assets.Pause
+          presenceData.smallImageText = 'Paused'
+          delete presenceData.startTimestamp
+          delete presenceData.endTimestamp
+        }
+      }
+
+      if (buttons) {
+        presenceData.buttons = [
+          {
+            label: 'Watch Episode',
+            url: href,
+          },
+        ]
+      }
+      break
+
+    case 'user':
+      Object.assign(presenceData)
+
+      if (pathname.split('/')[2]) {
+        presenceData.details = 'Viewing User:'
+        presenceData.state = document.querySelector('h1')?.textContent
+
+        if (buttons) {
+          presenceData.buttons = [
+            {
+              label: 'View User',
+              url: href,
+            },
+          ]
+        }
+      }
+      break
+
+    default:
+      presenceData.details = 'Browsing...'
+      break
+  }
+
+  presence.setActivity(presenceData)
+})

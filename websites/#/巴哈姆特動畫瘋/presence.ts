@@ -1,78 +1,131 @@
-const presence = new Presence({
-		clientId: "640194732718292992",
-	}),
-	strings = presence.getStrings({
-		play: "general.playing",
-		pause: "general.paused",
-	}),
-	browsingTimestamp = Math.floor(Date.now() / 1000);
+import { ActivityType, Assets, getTimestampsFromMedia } from 'premid'
 
-const enum Assets {
-	Logo = "https://cdn.rcd.gg/PreMiD/websites/%23/%E5%B7%B4%E5%93%88%E5%A7%86%E7%89%B9%E5%8B%95%E7%95%AB%E7%98%8B/assets/logo.png",
+const presence = new Presence({
+  clientId: '640194732718292992',
+})
+const strings = presence.getStrings({
+  play: 'general.playing',
+  pause: 'general.paused',
+  browsing: 'general.browsing',
+  browseanime: 'general.buttonViewAnime',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
+
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/%23/%E5%B7%B4%E5%93%88%E5%A7%86%E7%89%B9%E5%8B%95%E7%95%AB%E7%98%8B/assets/logo.png',
 }
 
-let user: HTMLElement | Element | string, title: HTMLElement | Element | string;
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    type: ActivityType.Watching,
+  } as PresenceData
 
-presence.on("UpdateData", async () => {
-	const presenceData: PresenceData = {
-		largeImageKey: Assets.Logo,
-	};
+  if (document.location.hostname === 'ani.gamer.com.tw') {
+    if (document.location.pathname === '/') {
+      presenceData.startTimestamp = browsingTimestamp
+      presenceData.details = '首頁'
+    }
+    else if (document.querySelector('#ani_video_html5_api')) {
+      const video = document.querySelector<HTMLVideoElement>(
+        '#ani_video_html5_api',
+      )!;
+      [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestampsFromMedia(video)
+      if (!Number.isNaN(video.duration)) {
+        presenceData.type = ActivityType.Watching
+        presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play
+        presenceData.smallImageText = video.paused
+          ? (await strings).pause
+          : (await strings).play
 
-	if (document.location.hostname === "ani.gamer.com.tw") {
-		if (document.location.pathname === "/") {
-			presenceData.startTimestamp = browsingTimestamp;
-			presenceData.details = "Viewing home page";
-		} else if (document.querySelector("#ani_video_html5_api")) {
-			const video = document.querySelector<HTMLVideoElement>(
-				"#ani_video_html5_api"
-			);
-			[presenceData.startTimestamp, presenceData.endTimestamp] =
-				presence.getTimestamps(
-					Math.floor(video.currentTime),
-					Math.floor(video.duration)
-				);
-			if (!isNaN(video.duration)) {
-				presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play;
-				presenceData.smallImageText = video.paused
-					? (await strings).pause
-					: (await strings).play;
+        const title = document.querySelector<HTMLElement>(
+          '#BH_background > div.container-player > div.anime-title > div.anime-option > section.videoname > div.anime_name > h1',
+        )
+        presenceData.details = title?.textContent
+        presenceData.name = title?.textContent || '巴哈姆特動畫瘋'
 
-				title = document.querySelector<HTMLElement>(
-					"#BH_background > div.container-player > div.anime-title > div.anime-option > section.videoname > div.anime_name > h1"
-				);
-				presenceData.details = title.textContent;
+        const score = document.querySelector<HTMLElement>(
+          '.score-overall-number',
+        )
 
-				user = document.querySelector<HTMLElement>(
-					"#BH_background > div.container-player > div.anime-title > div.anime-option > section.videoname > div.anime_name > div > p"
-				);
+        const views = document.querySelector<HTMLElement>(
+          '.newanime-count span',
+        )
 
-				if (user) presenceData.state = user.textContent;
+        const image = document.querySelector<HTMLImageElement>('.data-file .data-img')?.getAttribute('data-src')
+        presenceData.largeImageKey = image || ActivityAssets.Logo
+        presenceData.largeImageText = 'PreMiD - 巴哈姆特動畫瘋'
 
-				if (video.paused) {
-					delete presenceData.startTimestamp;
-					delete presenceData.endTimestamp;
-				}
-			} else if (isNaN(video.duration)) {
-				presenceData.startTimestamp = browsingTimestamp;
-				presenceData.details = "Looking at: ";
-				title = document.querySelector(
-					"#BH_background > div.container-player > div.anime-title > div.anime-option > section.videoname > div.anime_name > h1"
-				);
-				presenceData.state = title.textContent;
-				presenceData.smallImageKey = Assets.Reading;
-			}
-		} else if (document.location.pathname.includes("/animeList")) {
-			presenceData.startTimestamp = browsingTimestamp;
-			presenceData.details = "Viewing all animes";
-		}
-	}
+        if (score && views)
+          presenceData.state = `動畫瘋 | ✩${score.textContent} | ${views?.textContent}觀看`
 
-	if (!presenceData.details) {
-		presenceData.startTimestamp = browsingTimestamp;
-		presenceData.details = "Viewing page:";
-		presenceData.state = document
-			.querySelector("head > title")
-			.textContent.replace(" - 巴哈姆特動畫瘋", "");
-		presence.setActivity(presenceData);
-	} else presence.setActivity(presenceData);
-});
+        presenceData.buttons = [
+          {
+            label: (await strings).browseanime,
+            url: document.location.href,
+          },
+        ]
+
+        if (video.paused) {
+          delete presenceData.startTimestamp
+          delete presenceData.endTimestamp
+        }
+      }
+      else if (Number.isNaN(video.duration)) {
+        presenceData.startTimestamp = browsingTimestamp
+        presenceData.details = (await strings).browsing
+        const title = document.querySelector(
+          '#BH_background > div.container-player > div.anime-title > div.anime-option > section.videoname > div.anime_name > h1',
+        )
+        presenceData.state = title?.textContent
+        presenceData.smallImageKey = Assets.Reading
+      }
+    }
+    else if (document.querySelector('#partyPlayer_html5_api')) {
+      const video = document.querySelector<HTMLVideoElement>(
+        '#partyPlayer_html5_api',
+      )!;
+      [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestampsFromMedia(video)
+      if (!Number.isNaN(video.duration)) {
+        presenceData.type = ActivityType.Watching
+        presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play
+        presenceData.smallImageText = video.paused
+          ? (await strings).pause
+          : (await strings).play
+
+        const data = document.querySelector<HTMLImageElement>(
+          '.ani-play-queue-item.is-playing .img-block img',
+        )
+
+        presenceData.largeImageKey = data?.getAttribute('data-src') || ActivityAssets.Logo
+        presenceData.largeImageText = 'PreMiD - 巴哈姆特動畫瘋'
+        presenceData.details = data?.getAttribute('alt')
+        presenceData.name = data?.getAttribute('alt') || '巴哈姆特動畫瘋'
+
+        const onlineViewers = document.querySelector<HTMLElement>(
+          '.people-count',
+        )
+        const queueList = document.querySelector('.ani-queue-list')
+        const upcomingEpisodes = queueList ? queueList.querySelectorAll('.ani-play-queue-item').length : 0
+        presenceData.state = `動畫派對 | ${onlineViewers?.textContent || ''}| ${upcomingEpisodes}集待看`
+
+        if (video.paused) {
+          delete presenceData.startTimestamp
+          delete presenceData.endTimestamp
+        }
+      }
+    }
+  }
+
+  if (!presenceData.details) {
+    presenceData.startTimestamp = browsingTimestamp
+    presenceData.details = (await strings).browsing
+    presenceData.state = document
+      .querySelector('head > title')
+      ?.textContent
+      ?.replace(' - 巴哈姆特動畫瘋', '')
+    presence.setActivity(presenceData)
+  }
+  else {
+    presence.setActivity(presenceData)
+  }
+})

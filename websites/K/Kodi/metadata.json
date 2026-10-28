@@ -1,25 +1,27 @@
 {
-	"$schema": "https://schemas.premid.app/metadata/1.10",
-	"author": {
-		"name": "Alexx",
-		"id": "604182077088202784"
-	},
-	"service": "Kodi",
-	"description": {
-		"en": "Kodi presence for PreMiD! Please read [this page](https://github.com/PreMiD/Presences/blob/master/websites/K/Kodi/readme.md) to get started!",
-		"nl": "Kodi-aanwezigheid voor PreMiD! Lees [deze pagina] (https://github.com/PreMiD/Presences/blob/master/websites/K/Kodi/readme.md) om te beginnen!"
-	},
-	"url": [
-		"localhost",
-		"127.0.0.1"
-	],
-	"version": "1.0.24",
-	"logo": "https://cdn.rcd.gg/PreMiD/websites/K/Kodi/assets/logo.png",
-	"thumbnail": "https://cdn.rcd.gg/PreMiD/websites/K/Kodi/assets/thumbnail.png",
-	"color": "#ff7c00",
-	"category": "videos",
-	"tags": [
-		"kodi",
-		"media-player"
-	]
+  "$schema": "https://schemas.premid.app/metadata/1.17",
+  "apiVersion": 1,
+  "author": {
+    "name": "puppyonline",
+    "id": "1000194671747813466"
+  },
+  "service": "Kodi",
+  "description": {
+    "en": "Kodi presence for PreMiD! Please read [this page](https://github.com/PreMiD/Presences/blob/master/websites/K/Kodi/readme.md) to get started!",
+    "nl": "Kodi-aanwezigheid voor PreMiD! Lees [deze pagina] (https://github.com/PreMiD/Presences/blob/master/websites/K/Kodi/readme.md) om te beginnen!"
+  },
+  "url": [
+    "localhost",
+    "127.0.0.1"
+  ],
+  "regExp": "^https?[:][/][/](localhost|127[.]0[.]0[.]1):8080[/]",
+  "version": "1.1.4",
+  "logo": "https://cdn.rcd.gg/PreMiD/websites/K/Kodi/assets/logo.png",
+  "thumbnail": "https://cdn.rcd.gg/PreMiD/websites/K/Kodi/assets/thumbnail.png",
+  "color": "#ff7c00",
+  "category": "videos",
+  "tags": [
+    "media-player"
+  ],
+  "allowURLOverrides": true
 }

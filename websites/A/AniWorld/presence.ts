@@ -1,261 +1,524 @@
+import type { AnimeData } from './functions/animeData.js'
+import { ActivityType, Assets, getTimestamps, StatusDisplayType } from 'premid'
+import { fetchCover, getAnimeData } from './functions/animeData.js'
+
 const presence = new Presence({
-		clientId: "969716001090437120",
-	}),
-	pages: { [k: string]: string } = {
-		"/animes": "Betrachtet alle Animes",
-		"/beliebte-animes": "Betrachtet beliebte Animes",
-		"/support/anleitung": "So funktioniert's -",
-		"/animekalender": "Animekalender - ",
-		"/random": "Der Anime-Zufallsgenerator",
-		"/zufall": "Der Anime-Zufallsgenerator",
-		"/neu": "Betrachtet neue Animes",
-		"/support/regeln": "Betrachtet die Nutzungsbedingungen",
-		"/dmca": "Digital Millennium Copyright Act of 1998",
-		"/animewuensche": "Betrachtet Animewünsche",
-		"/login": "Login bei AniWorld",
-		"/registation": "Registrierung bei AniWorld",
-		"/account": "Betrachtet sein Account",
-		"/user/profil/": "Betrachtet ein Profil",
-		"/account/nachrichten": "Betrachtet seine Nachrichten",
-		"/account/notifications": "Betrachtet seine Benachrichtigungen",
-		"/account/support": "im Support Bereich",
-		"/account/watchlist": "Betrachtet seine Watchlist",
-		"/account/subscribed": "Betrachtet seine Abonnierte Animes",
-		"/account/settings": "Account Einstellungen",
-		"/support/fragen": "Betrachtet Fragen & Antworten",
-		"/support": "Hilfe & Support bei AniWorld",
-		"/edit:information": "Neue Serieninformationen vorschlagen",
-	};
-let video,
-	timeEnd: number,
-	currentTime: number,
-	paused: boolean,
-	played: boolean;
+  clientId: '1387112561362604104',
+})
 
-presence.on(
-	"iFrameData",
-	async (data: {
-		currentTime: number;
-		timeEnd: number;
-		paused: boolean;
-		played: boolean;
-	}) => {
-		({ currentTime, timeEnd, played, paused } = data);
-	}
-);
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/A/AniWorld/assets/logo.png',
+}
 
-presence.on("UpdateData", async () => {
-	const page = document.location.pathname,
-		presenceData: PresenceData = {
-			largeImageKey:
-				"https://cdn.rcd.gg/PreMiD/websites/A/AniWorld/assets/logo.png",
-			startTimestamp: Math.floor(Date.now() / 1000),
-		};
-	if (page === "/") presenceData.details = "Betrachtet die Startseite";
-	else if (page.startsWith("/anime/")) {
-		// Check if we are on the episode selection page
-		if (page.split("/").length === 4) {
-			presenceData.details =
-				document.querySelector<HTMLHeadingElement>("h1").textContent;
-			presenceData.state = "Betrachtet die Episodenliste";
-		} else {
-			presenceData.details =
-				document.querySelector<HTMLHeadingElement>("h1").textContent;
-			presenceData.state = `${document
-				.querySelector<HTMLTitleElement>("title")
-				.textContent.split("Staffel")[0]
-				.replace("Filme von", " ")
-				.split(" | AniWorld.to - Animes gratis online ansehen")} - ${
-				document.querySelector<HTMLHeadingElement>("h2").textContent
-			}`;
-			[presenceData.startTimestamp, presenceData.endTimestamp] =
-				presence.getTimestamps(currentTime, timeEnd);
-			presenceData.buttons = [
-				{
-					label: "Watch Anime",
-					url: document.location.href,
-				},
-			];
+enum CoverMode {
+  Logo = 0,
+  Kitsu = 1,
+}
 
-			video = document.querySelector<HTMLVideoElement>("video");
-			if (video) {
-				played = video.currentTime !== 0;
-				({ currentTime, duration: timeEnd, paused } = video);
-			}
-			if (played) {
-				if (!paused) {
-					[, presenceData.endTimestamp] = presence.getTimestamps(
-						currentTime,
-						timeEnd
-					);
-				}
-				presenceData.smallImageKey = paused ? Assets.Pause : Assets.Play;
-				presenceData.smallImageText = paused ? "Pausiert" : "Wiedergabe";
-			}
-		}
-		//Obere Reiter
-	} else {
-		switch (page) {
-			case "/animes":
-			case "/animes-alphabet":
-			case "/animes-genres": {
-				presenceData.details = pages[page];
-				presenceData.state = `Sortiert nach: ${
-					document.querySelector<HTMLSpanElement>(
-						"#wrapper > div.container.marginBottom > div.seriesListNavigation > strong"
-					).textContent
-				}`;
+enum DisplayType {
+  Name = 0,
+  Details = 1,
+  State = 2,
+}
 
-				break;
-			}
-			case "/beliebte-animes": {
-				presenceData.state = `${
-					document
-						.querySelector<HTMLTitleElement>("title")
-						.textContent.split("|")[0]
-				}`;
+//* The hoster iframe stops sending as soon as it is unloaded (episode switch,
+//* hoster change, closed player), so data that is no longer being refreshed has
+//* to be dropped instead of freezing the presence on the last known position.
+const VIDEO_DATA_TTL = 10_000
 
-				break;
-			}
-			case "/support/anleitung": {
-				presenceData.details = pages[page];
-				presenceData.state = "Die Anleitung";
+interface IFrameVideoData {
+  currentTime: number
+  duration: number
+  paused: boolean
+}
 
-				break;
-			}
-			default:
-				if (page.includes("/search")) {
-					presenceData.details = "Sucht nach:";
-					presenceData.state = `${
-						document.querySelector<HTMLSpanElement>(
-							"#wrapper > div.container > div.pageTitle.searchResultsPageTitle > h2 > strong"
-						).textContent
-					}`;
-				} else {
-					switch (page) {
-						case "/animekalender": {
-							presenceData.details = pages[page];
-							presenceData.state = `${
-								document.querySelector<HTMLSpanElement>(
-									"#wrapper > div.container > div.seriesWishListHeader > div.row > div.col-md-4 > small"
-								).textContent
-							}`;
+interface PageInfo {
+  details: string
+  state?: string
+  smallImageKey?: Assets
+  smallImageText?: string
+}
 
-							break;
-						}
-						case "/zufall": {
-							presenceData.details = pages[page];
-							break;
-						}
-						case "/random": {
-							presenceData.details = pages[page];
-							break;
-						}
-						case "/neu": {
-							presenceData.details = pages[page];
-							break;
-						}
-						case "/support/regeln": {
-							presenceData.details = pages[page];
-							break;
-						}
-						case "/dmca": {
-							presenceData.details = pages[page];
-							break;
-						}
-						case "/animewuensche": {
-							presenceData.details = pages[page];
-							break;
-						}
-						case "/login": {
-							presenceData.details = pages[page];
-							break;
-						}
-						case "/registrierung": {
-							presenceData.details = pages[page];
-							break;
-						}
-						case "/account": {
-							presenceData.details = pages[page];
-							break;
-						}
-						default:
-							if (page.startsWith("/user/profil/")) {
-								presenceData.details = "Betrachtet ein Profil";
-								presenceData.state = `${
-									document.querySelector<HTMLHeadingElement>("h1").textContent
-								}`;
-								presenceData.smallImageKey =
-									"https://cdn.rcd.gg/PreMiD/websites/A/AniWorld/assets/0.png";
-								presenceData.smallImageText = `${
-									document.querySelector<HTMLDivElement>(
-										"#userDetails > div > div > div:nth-child(3) > div"
-									).textContent
-								}`;
-							} else {
-								switch (page) {
-									case "/account/nachrichten": {
-										presenceData.details = pages[page];
-										break;
-									}
-									case "/account/notifications": {
-										presenceData.details = pages[page];
-										break;
-									}
-									case "/account/support": {
-										presenceData.details = pages[page];
-										break;
-									}
-									case "/account/watchlist": {
-										presenceData.details = pages[page];
-										break;
-									}
-									case "/account/subscribed": {
-										presenceData.details = pages[page];
-										break;
-									}
-									case "/account/settings": {
-										presenceData.details = pages[page];
-										break;
-									}
-									default:
-										if (page.startsWith("/support/fragen"))
-											presenceData.details = pages[page];
-										else if (page === "/support")
-											presenceData.details = pages[page];
-										else if (page === "/edit:information")
-											presenceData.details = pages[page];
-										else if (page.startsWith("/katalog/")) {
-											presenceData.details = `Betrachtet Animes mit ${
-												document.querySelector<HTMLSpanElement>(
-													"#wrapper > div.container.marginBottom > div.pageTitle > h1 > strong"
-												).textContent
-											}`;
-										} else if (page.startsWith("/support/frage/")) {
-											presenceData.details = `Frage von ${
-												document.querySelector<HTMLHeadingElement>("h5")
-													.textContent
-											}`;
-											presenceData.state = `${
-												document.querySelector<HTMLHeadingElement>("h1")
-													.textContent
-											}`;
-										} else if (page.startsWith("/genre/")) {
-											presenceData.details = `Sucht nach ${
-												document.querySelector<HTMLHeadingElement>(
-													"#wrapper > div.container.marginBottom > div.seriesListSection > div.pageTitle.pageCenter.homeTitle > h1"
-												).textContent
-											}`;
-										} else {
-											presenceData.details =
-												"Befindet sich auf einer Unbekannte Seite";
-										}
-								}
-							}
-					}
-				}
-		}
-	}
+async function getStrings() {
+  return presence.getStrings({
+    videoPaused: 'general.paused',
+    videoPlaying: 'general.playing',
+    buttonWatchAnime: 'general.buttonWatchAnime',
+    buttonWatchEpisode: 'general.buttonViewEpisode',
+    buttonWatchMovie: 'general.buttonWatchMovie',
+    account: 'general.viewAccount',
+    animes: 'aniworld.animes',
+    browsing: 'general.browsing',
+    calendar: 'aniworld.calendar',
+    catalog: 'aniworld.catalog.browsing',
+    dmca: 'aniworld.dmca',
+    editinfo: 'aniworld.edit.info',
+    episodeList: 'aniworld.episodeList',
+    faq: 'aniworld.support.faq',
+    guide: 'aniworld.support.guide',
+    home: 'general.viewHome',
+    login: 'aniworld.login',
+    messages: 'aniworld.messages',
+    new: 'aniworld.new',
+    notifications: 'aniworld.notifications',
+    popular: 'aniworld.popular',
+    profile: 'general.viewProfile',
+    random: 'aniworld.random',
+    registration: 'aniworld.registration',
+    searchLoading: 'aniworld.search.loading',
+    searchQuery: 'aniworld.search.query',
+    settings: 'aniworld.settings',
+    subscribed: 'aniworld.subscribed',
+    support: 'aniworld.support.help',
+    supportQuestion: 'aniworld.support.question',
+    supportQuestionState: 'aniworld.support.questionState',
+    terms: 'general.terms',
+    watchlist: 'aniworld.watchlist',
+    wishes: 'aniworld.wishes',
+  })
+}
 
-	if (presenceData.details) presence.setActivity(presenceData);
-});
+type Strings = Awaited<ReturnType<typeof getStrings>>
+
+function getStaticPages(strings: Strings): Record<string, PageInfo> {
+  return {
+    '/': {
+      details: strings.home,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.home,
+    },
+    '/animes': {
+      details: strings.animes,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.animes,
+    },
+    '/beliebte-animes': {
+      details: strings.popular,
+    },
+    '/support/anleitung': {
+      details: strings.guide,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.guide,
+    },
+    '/animekalender': {
+      details: strings.calendar,
+      smallImageKey: Assets.Search,
+      smallImageText: strings.calendar,
+    },
+    '/random': {
+      details: strings.random,
+      smallImageKey: Assets.Search,
+      smallImageText: strings.random,
+    },
+    '/zufall': {
+      details: strings.random,
+      smallImageKey: Assets.Search,
+      smallImageText: strings.random,
+    },
+    '/neu': {
+      details: strings.new,
+      smallImageKey: Assets.Search,
+      smallImageText: strings.new,
+    },
+    '/neue-episoden': {
+      details: strings.new,
+      smallImageKey: Assets.Search,
+      smallImageText: strings.new,
+    },
+    '/support/regeln': {
+      details: strings.terms,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.terms,
+    },
+    '/dmca': {
+      details: strings.dmca,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.dmca,
+    },
+    '/animewuensche': {
+      details: strings.wishes,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.wishes,
+    },
+    '/login': {
+      details: strings.login,
+      smallImageKey: Assets.Writing,
+      smallImageText: strings.login,
+    },
+    '/registrierung': {
+      details: strings.registration,
+      smallImageKey: Assets.Writing,
+      smallImageText: strings.registration,
+    },
+    '/account': {
+      details: strings.account,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.account,
+    },
+    '/account/nachrichten': {
+      details: strings.messages,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.messages,
+    },
+    '/account/notifications': {
+      details: strings.notifications,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.notifications,
+    },
+    '/account/support': {
+      details: strings.support,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.support,
+    },
+    '/account/watchlist': {
+      details: strings.watchlist,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.watchlist,
+    },
+    '/account/subscribed': {
+      details: strings.subscribed,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.subscribed,
+    },
+    '/account/settings': {
+      details: strings.settings,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.settings,
+    },
+    '/support/fragen': {
+      details: strings.faq,
+      smallImageKey: Assets.Question,
+      smallImageText: strings.faq,
+    },
+    '/support': {
+      details: strings.support,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.support,
+    },
+    '/edit:information': {
+      details: strings.editinfo,
+      smallImageKey: Assets.Writing,
+      smallImageText: strings.editinfo,
+    },
+    '/user/profil': {
+      details: strings.profile,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.profile,
+    },
+  }
+}
+
+//* Checked before the static list so that /support/frage/<slug> is not
+//* swallowed by the /support entry.
+function getDynamicPage(pathname: string, strings: Strings): PageInfo | undefined {
+  const profile = pathname.match(/^\/user\/profil\/([^/]+)/)?.[1]
+  if (profile) {
+    return {
+      details: strings.profile,
+      //* "general.viewProfile" ends with a colon and expects the name next to it.
+      state: document.querySelector('h1')?.textContent?.trim() || decodeURIComponent(profile),
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.profile,
+    }
+  }
+
+  const letter = pathname.match(/^\/katalog\/([^/]+)/)?.[1]
+  if (letter) {
+    return {
+      details: strings.catalog,
+      //* Appending would not translate: the string is a prefix in English but a
+      //* full sentence in other locales.
+      state: decodeURIComponent(letter),
+      smallImageKey: Assets.Search,
+      smallImageText: strings.animes,
+    }
+  }
+
+  if (/^\/support\/frage\//.test(pathname)) {
+    return {
+      details: strings.supportQuestion,
+      smallImageKey: Assets.Question,
+      smallImageText: strings.supportQuestionState,
+    }
+  }
+
+  if (pathname === '/search') {
+    const query = document.querySelector<HTMLInputElement>('#search')?.value.trim()
+    const info: PageInfo = {
+      details: query ? strings.searchQuery : strings.searchLoading,
+      smallImageKey: Assets.Search,
+      smallImageText: strings.searchLoading,
+    }
+
+    if (query)
+      info.state = query
+
+    return info
+  }
+
+  return undefined
+}
+
+//* Sub pages such as /account/support/new are only listed by their base path.
+function findStaticPage(pathname: string, pages: Record<string, PageInfo>): PageInfo | undefined {
+  let matched: [string, PageInfo] | undefined
+
+  for (const entry of Object.entries(pages)) {
+    if (pathname !== entry[0] && !pathname.startsWith(`${entry[0]}/`))
+      continue
+
+    if (!matched || entry[0].length > matched[0].length)
+      matched = entry
+  }
+
+  return matched?.[1]
+}
+
+let videoData: IFrameVideoData | null = null
+let videoDataUpdatedAt = 0
+
+presence.on('iFrameData', (data: IFrameVideoData) => {
+  videoData = data
+  videoDataUpdatedAt = Date.now()
+})
+
+function getVideoData(): IFrameVideoData | null {
+  if (videoData && Date.now() - videoDataUpdatedAt > VIDEO_DATA_TTL)
+    videoData = null
+
+  return videoData
+}
+
+let kitsuSlug: string | null = null
+let kitsuCover: string | undefined
+let pendingCover: Promise<string | undefined> | null = null
+
+//* Cached per series so an episode switch does not re-query Kitsu.
+async function getKitsuCover(animeData: AnimeData): Promise<string | undefined> {
+  if (kitsuSlug === animeData.slug)
+    return kitsuCover
+
+  //* UpdateData keeps firing while the lookup is still open, so share it.
+  pendingCover ??= fetchCover(animeData.title).finally(() => {
+    pendingCover = null
+  })
+
+  const cover = await pendingCover
+
+  //* Discard a result that arrived after the user moved on.
+  if (getAnimeData().slug !== animeData.slug)
+    return undefined
+
+  kitsuSlug = animeData.slug
+  kitsuCover = cover
+
+  return cover
+}
+
+//* Covers hosted on aniworld.to are not an option: Discord never resolves them
+//* into an external asset and falls back to a blank image.
+async function getCover(animeData: AnimeData, mode: CoverMode): Promise<string> {
+  if (mode === CoverMode.Logo)
+    return ActivityAssets.Logo
+
+  return await getKitsuCover(animeData) ?? ActivityAssets.Logo
+}
+
+function getEpisodeTitle(): string | undefined {
+  const heading = document.querySelector('h2')
+  if (!heading)
+    return undefined
+
+  //* The English title sits in a sibling <small> and would otherwise be glued
+  //* on without a separator.
+  const title = heading.querySelector('.episodeGermanTitle')?.textContent
+    ?? Array.from(heading.childNodes)
+      .filter(node => !(node instanceof Element && node.matches('small.episodeEnglishTitle')))
+      .map(node => node.textContent ?? '')
+      .join('')
+
+  return title.trim() || undefined
+}
+
+//* Unlike the raw %season%/%episode% placeholders this stays correct on movie
+//* pages, which have neither.
+function getProgress(animeData: AnimeData): string {
+  if (animeData.movie !== undefined)
+    return `Movie ${animeData.movie}`
+  if (animeData.episode === undefined)
+    return ''
+
+  return animeData.season === undefined
+    ? `E${animeData.episode}`
+    : `S${animeData.season}E${animeData.episode}`
+}
+
+//* Empty placeholders collapse together with their separator, so a missing
+//* episode title cannot leave a dangling dash behind.
+function formatRow(format: string, animeData: AnimeData, episodeTitle: string | undefined): string {
+  return format
+    .replace(/%anime%/g, animeData.title)
+    .replace(/%episodeTitle%/g, episodeTitle ?? '')
+    .replace(/%progress%/g, getProgress(animeData))
+    .replace(/%season%/g, animeData.season?.toString() ?? '')
+    .replace(/%episode%/g, animeData.episode?.toString() ?? '')
+    .replace(/%movie%/g, animeData.movie?.toString() ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\-–·|]+|[\s\-–·|]+$/g, '')
+}
+
+let browsingTimestamp = Math.floor(Date.now() / 1000)
+let wasWatching = false
+
+function getBrowsingTimestamp(): number {
+  if (wasWatching) {
+    browsingTimestamp = Math.floor(Date.now() / 1000)
+    wasWatching = false
+  }
+
+  return browsingTimestamp
+}
+
+let oldLang: string | null = null
+let strings: Strings
+let staticPages: Record<string, PageInfo>
+
+presence.on('UpdateData', async () => {
+  const [
+    lang,
+    privacyMode,
+    showTitleAsPresence,
+    coverMode,
+    detailsFormat,
+    stateFormat,
+    displayType,
+    showTimestamp,
+    hidePaused,
+  ] = await Promise.all([
+    presence.getSetting<string>('lang').catch(() => 'en'),
+    presence.getSetting<boolean>('privacy'),
+    presence.getSetting<boolean>('showTitleAsPresence'),
+    presence.getSetting<number>('cover'),
+    presence.getSetting<string>('detailsFormat'),
+    presence.getSetting<string>('stateFormat'),
+    presence.getSetting<number>('displayType'),
+    presence.getSetting<boolean>('timestamp'),
+    presence.getSetting<boolean>('hidePaused'),
+  ])
+
+  //* getStrings() is a round trip to the extension, so only refresh the strings
+  //* when the selected language actually changed.
+  if (!strings || oldLang !== lang) {
+    oldLang = lang
+    strings = await getStrings()
+    staticPages = getStaticPages(strings)
+  }
+
+  const page = document.location.pathname
+
+  if (privacyMode) {
+    await presence.setActivity({
+      details: strings.browsing,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.browsing,
+      largeImageKey: ActivityAssets.Logo,
+      startTimestamp: getBrowsingTimestamp(),
+    })
+    return
+  }
+
+  const statusDisplayType = displayType === DisplayType.Name
+    ? StatusDisplayType.Name
+    : displayType === DisplayType.State
+      ? StatusDisplayType.State
+      : StatusDisplayType.Details
+
+  if (page.startsWith('/anime/')) {
+    const animeData = getAnimeData()
+    const isMovie = animeData.movie !== undefined
+    const isEpisode = animeData.episode !== undefined
+    const name = showTitleAsPresence ? animeData.title : 'AniWorld'
+    const largeImageKey = await getCover(animeData, coverMode)
+
+    if (!isEpisode && !isMovie) {
+      await presence.setActivity({
+        type: ActivityType.Watching,
+        name,
+        details: name,
+        state: strings.episodeList,
+        largeImageKey,
+        largeImageText: animeData.title,
+        smallImageKey: Assets.Reading,
+        smallImageText: strings.episodeList,
+        startTimestamp: getBrowsingTimestamp(),
+        statusDisplayType,
+        buttons: [{ label: strings.buttonWatchAnime, url: document.location.href }],
+      })
+      return
+    }
+
+    wasWatching = true
+
+    const video = getVideoData()
+    //* No player data yet, e.g. while the hoster loads.
+    const paused = video?.paused ?? true
+
+    if (paused && hidePaused) {
+      await presence.clearActivity()
+      return
+    }
+
+    const episodeTitle = getEpisodeTitle()
+    const details = formatRow(detailsFormat, animeData, episodeTitle)
+    const state = formatRow(stateFormat, animeData, episodeTitle)
+
+    const episodeButton = {
+      label: isMovie ? strings.buttonWatchMovie : strings.buttonWatchEpisode,
+      url: document.location.href,
+    }
+    const seriesButton = animeData.slug
+      ? {
+          label: strings.buttonWatchAnime,
+          url: `${document.location.origin}/anime/stream/${animeData.slug}`,
+        }
+      : undefined
+
+    const presenceData: PresenceData = {
+      type: ActivityType.Watching,
+      name,
+      details: details || animeData.title,
+      largeImageKey,
+      largeImageText: isMovie
+        ? `Movie ${animeData.movie}`
+        : `Season ${animeData.season ?? 'N/A'}, Episode ${animeData.episode}`,
+      smallImageKey: paused ? Assets.Pause : Assets.Play,
+      smallImageText: paused ? strings.videoPaused : strings.videoPlaying,
+      statusDisplayType,
+      buttons: seriesButton ? [episodeButton, seriesButton] : [episodeButton],
+    }
+
+    //* "{0}" lets users drop the row entirely.
+    if (state && !stateFormat.includes('{0}'))
+      presenceData.state = state
+
+    if (video && !paused && showTimestamp)
+      [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestamps(video.currentTime, video.duration)
+
+    await presence.setActivity(presenceData)
+    return
+  }
+
+  const pageInfo = getDynamicPage(page, strings)
+    ?? findStaticPage(page, staticPages)
+    ?? {
+      details: strings.browsing,
+      smallImageKey: Assets.Reading,
+      smallImageText: strings.browsing,
+    }
+
+  await presence.setActivity({
+    ...pageInfo,
+    largeImageKey: ActivityAssets.Logo,
+    startTimestamp: getBrowsingTimestamp(),
+  })
+})

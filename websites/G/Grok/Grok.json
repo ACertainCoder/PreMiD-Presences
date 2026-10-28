@@ -1,0 +1,34 @@
+{
+  "grok.talkingWithAI": {
+    "description": "Displayed when the user is engaging in a conversation with the AI.",
+    "message": "Talking with Grok"
+  },
+  "grok.replyingTo": {
+    "description": "Displayed as the state line under the chat title. {0} is the user's latest prompt.",
+    "message": "Replying to: \"{0}\""
+  },
+  "grok.startNewConversation": {
+    "description": "Displayed when the user is on the new chat screen.",
+    "message": "Start new conversation"
+  },
+  "grok.thinkingOfPrompt": {
+    "description": "Displayed when the user is thinking of a new prompt.",
+    "message": "Thinking of a new prompt..."
+  },
+  "grok.creatingImages": {
+    "description": "Displayed when the user is on Grok Imagine.",
+    "message": "Creating with Imagine"
+  },
+  "grok.viewingFiles": {
+    "description": "Displayed when the user is browsing files or the library.",
+    "message": "Browsing files"
+  },
+  "grok.browsingProjects": {
+    "description": "Displayed when the user is in projects or workspaces.",
+    "message": "Browsing projects"
+  },
+  "grok.readingSharedChat": {
+    "description": "Displayed when the user is viewing a shared conversation.",
+    "message": "Reading a shared chat"
+  }
+}

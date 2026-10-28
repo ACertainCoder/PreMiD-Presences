@@ -1,43 +1,40 @@
+import { ActivityType, Assets } from 'premid'
+
 const presence = new Presence({
-		clientId: "904084297831571518",
-	}),
-	browsingTimestamp = Math.floor(Date.now() / 1000);
+  clientId: '904084297831571518',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-presence.on("UpdateData", () => {
-	const presenceData: PresenceData = {
-			largeImageKey:
-				"https://cdn.rcd.gg/PreMiD/websites/A/atomicradio/assets/logo.png",
-			smallImageKey: Assets.Search,
-			startTimestamp: browsingTimestamp,
-		},
-		player = document.querySelector<HTMLDivElement>("div.player");
+presence.on('UpdateData', () => {
+  const presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/A/atomicradio/assets/logo.png',
+    smallImageKey: Assets.Search,
+    startTimestamp: browsingTimestamp,
+    type: ActivityType.Listening,
+  }
+  const player = document.querySelector<HTMLDivElement>('div.player')
 
-	if (player) {
-		presenceData.largeImageKey = player.querySelector("#artwork").textContent;
-		presenceData.smallImageKey =
-			player.querySelector<HTMLButtonElement>('[id*="-button"]').id ===
-			"play-button"
-				? Assets.Play
-				: Assets.Pause;
-		presenceData.details =
-			player.querySelector<HTMLAnchorElement>("div.track-title").textContent;
-		presenceData.state =
-			player.querySelector<HTMLDivElement>("div.track-artist").textContent;
-		presenceData.endTimestamp = new Date(
-			player.querySelector("#endingAt").textContent
-		).getTime();
-		presenceData.smallImageText =
-			player.querySelector("div.track-space").textContent;
-		presenceData.buttons = [
-			{
-				label: "Listen",
-				url: `https://atomic.radio/${
-					player.querySelector("#spaceId").textContent
-				}`,
-			},
-		];
-	} else presenceData.details = "Browsing...";
-
-	if (presenceData.details) presence.setActivity(presenceData);
-	else presence.setActivity();
-});
+  const currentSpaceItem = localStorage.getItem('currentSpace')
+  if (player && currentSpaceItem) {
+    const currentSpace = JSON.parse(currentSpaceItem)
+    presenceData.largeImageKey = currentSpace.current_track.artwork
+    presenceData.smallImageKey = Assets.Play
+    presenceData.details = currentSpace.current_track.title
+    presenceData.state = currentSpace.current_track.artist
+    presenceData.startTimestamp = Math.floor(new Date(currentSpace.current_track.startingAt).getTime() / 1000)
+    presenceData.endTimestamp = Math.floor(new Date(currentSpace.current_track.endingAt).getTime() / 1000)
+    presenceData.smallImageText = currentSpace.name
+    presenceData.buttons = [
+      {
+        label: 'Listen',
+        url: `https://atomic.radio/${currentSpace.id}`,
+      },
+    ]
+  }
+  else {
+    presenceData.details = 'Browsing...'
+  }
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.clearActivity()
+})

@@ -1,849 +1,1027 @@
-let presence = new Presence({
-	clientId: "658230518520741915",
-});
+import { ActivityType, Assets, getTimestamps } from 'premid'
 
-function setClient(options: PresenceOptions) {
-	if (Number(presence.getExtensionVersion(true)) < 224) return;
-
-	presence.clearActivity();
-	presence = new Presence(options);
-}
+const presence = new Presence({
+  clientId: '658230518520741915',
+})
 
 enum LogoAssets {
-	BbcFuture = "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/0.png",
-	BbcIplayer = "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/1.png",
-	Bbc = "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/logo.png",
-	BbcNews = "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/2.png",
-	BbcSounds = "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/3.png",
-	BbcSport = "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/4.png",
-	BbcWeather = "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/5.png",
+  BbcFuture = 'https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/0.png',
+  BbciPlayer = 'https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/1.png',
+  Bbc = 'https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/2.png',
+  BbcNews = 'https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/3.png',
+  BbcSounds = 'https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/4.png',
+  BbcSport = 'https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/5.png',
+  BbcWeather = 'https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/6.png',
 }
 
-/* eslint-disable camelcase */
-const assets = {
-		bbcsounds_logo: "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/6.png",
-		bbciplayer_logo: "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/7.png",
-		bbc_logo: "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/8.png",
-		bbcnews_logo: "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/9.png",
-		bbcsport_logo: "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/10.png",
-		bbcweather_logo: "https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/11.png",
-	},
-	/* eslint-enable camelcase */
-	browsingTimestamp = Math.floor(Date.now() / 1000),
-	getStrings = (lang: string) =>
-		presence.getStrings(
-			{
-				play: "general.playing",
-				pause: "general.paused",
-				Live: "general.Live",
-				browse: "general.browsing",
-				searchFor: "general.searchFor",
-				viewTeam: "twitch.viewTeam",
-				viewPage: "general.viewPage",
-				viewMovie: "general.viewMovie",
-				viewSeries: "general.viewSeries",
-				watchVideo: "general.buttonWatchVideo",
-				readingArticle: "general.readingArticle",
-				buttonViewSeries: "general.buttonViewSeries",
-				buttonViewMovie: "general.buttonViewMovie",
-				buttonViewEpisode: "general.buttonViewEpisode",
-				buttonListenAlong: "general.buttonListenAlong",
-				buttonReadArticle: "general.buttonReadArticle",
-			},
-			lang
-		),
-	serviceName = (() => {
-		switch (location.pathname.split("/")[1]) {
-			case "iplayer":
-				setClient({
-					clientId: "932513249327460402",
-				});
-				return "Iplayer";
-			case "sounds":
-				setClient({
-					clientId: "944257541964169287",
-				});
-				return "Sounds";
-			case "sport":
-				return "Sport";
-			case "news":
-				return "News";
-			case "weather":
-				return "Weather";
-			case "future":
-				return "Future";
-			default:
-				setClient({
-					clientId: "658230518520741915",
-				});
-				return "";
-		}
-	})();
+const browsingTimestamp = Math.floor(Date.now() / 1000)
+function getStrings() {
+  return presence.getStrings(
+    {
+      play: 'general.playing',
+      pause: 'general.paused',
+      Live: 'general.live',
+      browse: 'general.browsing',
+      searchSomething: 'general.searchSomething',
+      viewTeam: 'twitch.viewTeam',
+      viewPage: 'general.viewPage',
+      viewMovie: 'general.viewMovie',
+      viewSeries: 'general.viewSeries',
+      watchVideo: 'general.buttonWatchVideo',
+      readingArticle: 'general.readingArticle',
+      buttonViewSeries: 'general.buttonViewSeries',
+      buttonViewMovie: 'general.buttonViewMovie',
+      buttonViewEpisode: 'general.buttonViewEpisode',
+      buttonListenAlong: 'general.buttonListenAlong',
+      buttonReadArticle: 'general.buttonReadArticle',
+    },
+  )
+}
 
-let oldLang: string = null,
-	strings: Awaited<ReturnType<typeof getStrings>>,
-	VideoMedia: MediaData = {
-		duration: 0,
-		currentTime: 0,
-		paused: true,
-	},
-	SoundMedia: MediaData = {
-		duration: 0,
-		currentTime: 0,
-		paused: true,
-		title: null,
-	};
+function formatChannelName(channelId?: string): string {
+  if (!channelId)
+    return 'Live TV'
+  const channelMap: { [key: string]: string } = {
+    bbcone: 'BBC One',
+    bbctwo: 'BBC Two',
+    bbcthree: 'BBC Three',
+    bbcfour: 'BBC Four',
+    bbcnews: 'BBC News',
+    cbbc: 'CBBC',
+    cbeebies: 'CBeebies',
+    bbcparliament: 'BBC Parliament',
+    bbcscotland: 'BBC Scotland',
+    bbcalba: 'BBC Alba',
+    s4c: 'S4C',
+  }
+  return channelMap[channelId.toLowerCase()] || channelId.toUpperCase()
+}
 
-presence.on("iFrameData", (data: IFrameData) => {
-	if (data.audio) SoundMedia = data.audio;
-	if (data.video) VideoMedia = data.video;
-});
+const LIVE_DURATION_THRESHOLD = 86400 * 30 // nothing on iPlayer is 30 days long
+function isEpochAnchored(value: number): boolean {
+  return Number.isFinite(value) && value > LIVE_DURATION_THRESHOLD
+}
+function isLiveTimeline(media: { duration: number, currentTime: number }): boolean {
+  // `duration` alone is ambiguous: MSE streams (live or VOD) can report
+  // Infinity while the seekable range is still unresolved. `currentTime`
+  // anchored to wall-clock epoch seconds is the reliable live signature.
+  return isEpochAnchored(media.currentTime) || isEpochAnchored(media.duration)
+}
 
-presence.on("UpdateData", async () => {
-	const path = document.location.pathname,
-		[newLang, buttons, showSearchQuery, showCover] = await Promise.all([
-			presence.getSetting<string>("lang").catch(() => "en"),
-			presence.getSetting<boolean>("buttons"),
-			presence.getSetting<boolean>("search"),
-			presence.getSetting<boolean>("cover"),
-		]),
-		setCover = (url: string, size?: string) => {
-			if (url) {
-				presenceData.largeImageKey = url.replace(
-					"{recipe}",
-					size ?? "1280x720"
-				);
-			}
-		},
-		handleVideo = () => {
-			[presenceData.startTimestamp, presenceData.endTimestamp] =
-				presence.getTimestamps(VideoMedia.currentTime, VideoMedia.duration);
+const serviceName = (() => {
+  switch (location.pathname.split('/')[1]) {
+    case 'iplayer':
+      return 'iPlayer'
+    case 'sounds':
+      return 'Sounds'
+    case 'sport':
+      return 'Sport'
+    case 'news':
+      return 'News'
+    case 'weather':
+      return 'Weather'
+    case 'future':
+      return 'Future'
+    default:
+      return ''
+  }
+})()
 
-			presenceData.smallImageKey = VideoMedia.paused
-				? Assets.Pause
-				: Assets.Play;
-			presenceData.smallImageText = VideoMedia.paused
-				? strings.pause
-				: strings.play;
+let strings: Awaited<ReturnType<typeof getStrings>>
+let VideoMedia: MediaData = {
+  duration: 0,
+  currentTime: 0,
+  paused: true,
+}
+let SoundMedia: MediaData = {
+  duration: 0,
+  currentTime: 0,
+  paused: true,
+  title: undefined,
+}
+let iPlayer: IPlayerData
+let soundData: SoundData
+let lastPath: string | undefined
+let liveBroadcast: { serviceId: string, data?: LiveBroadcast, fetchedAt: number } | undefined
 
-			if (VideoMedia.paused) {
-				delete presenceData.startTimestamp;
-				delete presenceData.endTimestamp;
-			}
-		};
+async function getLiveBroadcast(serviceId: string): Promise<LiveBroadcast | undefined> {
+  const now = Date.now()
+  if (liveBroadcast?.serviceId === serviceId) {
+    const end = liveBroadcast.data ? Date.parse(liveBroadcast.data.end) : 0
+    if (now < end || now - liveBroadcast.fetchedAt < 30_000)
+      return liveBroadcast.data
+  }
 
-	if (oldLang !== newLang || !strings) {
-		oldLang = newLang;
-		strings = await getStrings(oldLang);
-	}
+  const previous = liveBroadcast?.serviceId === serviceId ? liveBroadcast.data : undefined
+  liveBroadcast = { serviceId, data: previous, fetchedAt: now }
+  try {
+    const response = await fetch(
+      `https://rms.api.bbc.co.uk/v2/broadcasts/sub-services/poll/${serviceId}?experience=domestic&offset=0&limit=3`,
+    )
+    const { data } = await response.json() as { data: LiveBroadcast[] }
+    liveBroadcast.data = data.find(b => Date.parse(b.start) <= now && now < Date.parse(b.end)) ?? data[0]
+  }
+  catch {}
+  return liveBroadcast.data
+}
 
-	let presenceData: PresenceData = {
-		largeImageKey: LogoAssets[`Bbc${serviceName}`],
-		details: strings.browse,
-		startTimestamp: browsingTimestamp,
-	};
+presence.on('iFrameData', (data: IFrameData) => {
+  if (data.audio)
+    SoundMedia = data.audio
+  if (data.video)
+    VideoMedia = data.video
+})
 
-	if (path.includes("/iplayer")) {
-		const iPlayer = await presence.getPageletiable<IPlayerData>(
-			"__IPLAYER_REDUX_STATE__"
-		);
+presence.on('UpdateData', async () => {
+  if (!strings) {
+    strings = await getStrings()
+  }
 
-		let iPlayerVideo: HTMLVideoElement | MediaData = document
-			.querySelector("smp-toucan-player")
-			?.shadowRoot?.querySelector("smp-playback")
-			?.shadowRoot?.querySelector<HTMLVideoElement>("video");
+  let presenceData: PresenceData = {
+    name: `BBC ${serviceName}`,
+    largeImageKey: LogoAssets[`Bbc${serviceName}`],
+    details: strings.browse,
+    startTimestamp: browsingTimestamp,
+  } as PresenceData
 
-		if (!iPlayerVideo && VideoMedia) iPlayerVideo = VideoMedia;
+  const path = document.location.pathname
+  const [buttons, showCover, usePresenceName] = await Promise.all([
+    presence.getSetting<boolean>('buttons'),
+    presence.getSetting<boolean>('cover'),
+    presence.getSetting<boolean>('usePresenceName'),
+  ])
+  const { href } = document.location
+  const setCover = (url?: string, size?: string) => {
+    if (url) {
+      presenceData.largeImageKey = url.replace(
+        '{recipe}',
+        size ?? '1280x720',
+      )
+    }
+  }
+  const handleVideo = () => {
+    presenceData.type = ActivityType.Watching
 
-		presenceData.details = strings.browse;
+    if (isLiveTimeline(VideoMedia)) {
+      presenceData.smallImageKey = Assets.Live
+      presenceData.smallImageText = strings.Live
+      delete presenceData.startTimestamp
+      delete presenceData.endTimestamp
+      return
+    }
 
-		if (path.includes("/iplayer/episode")) {
-			if (!iPlayerVideo.duration || iPlayer.episode?.Live) {
-				if (iPlayer.channel?.onAir || iPlayer.episode?.Live) {
-					presenceData.details = (iPlayer.channel ?? iPlayer.episode).title;
-					presenceData.state = strings.Live;
+    [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestamps(VideoMedia.currentTime, VideoMedia.duration)
 
-					setCover(iPlayer.episode?.images?.standard);
+    presenceData.smallImageKey = VideoMedia.paused
+      ? Assets.Pause
+      : Assets.Play
+    presenceData.smallImageText = VideoMedia.paused
+      ? strings.pause
+      : strings.play
 
-					presenceData.smallImageKey = Assets.Live;
-				} else if (!iPlayer.channel) {
-					setCover(
-						iPlayer.episode?.images?.promotional ??
-							iPlayer.header?.imageTemplate
-					);
+    if (VideoMedia.paused) {
+      delete presenceData.startTimestamp
+      delete presenceData.endTimestamp
+    }
+  }
 
-					presenceData.details =
-						iPlayer.relatedEpisodes?.count || iPlayer.header?.episodeCount
-							? strings.viewSeries
-							: strings.viewMovie;
-					presenceData.state = (iPlayer.episode || iPlayer.header).title;
-					presenceData.startTimestamp = browsingTimestamp;
-				}
-			} else {
-				let subtitle = document.querySelector(
-					":is(.typo.typo--skylark.play-cta__subtitle, .typo.typo--bold.play-cta__title.typo--skylark)"
-				)?.textContent;
+  if (path.includes('/iplayer')) {
+    presenceData.type = ActivityType.Watching
+    if (lastPath !== path) {
+      lastPath = path
+      const data = await presence.getPageVariable<Record<string, any>>(
+        '__IPLAYER_REDUX_STATE__.episode',
+        '__IPLAYER_REDUX_STATE__.versions',
+        '__IPLAYER_REDUX_STATE__.channel',
+        '__IPLAYER_REDUX_STATE__.header',
+        '__IPLAYER_REDUX_STATE__.relatedEpisodes',
+      )
+      iPlayer = {
+        episode: data['__IPLAYER_REDUX_STATE__.episode'],
+        versions: data['__IPLAYER_REDUX_STATE__.versions'],
+        channel: data['__IPLAYER_REDUX_STATE__.channel'],
+        header: data['__IPLAYER_REDUX_STATE__.header'],
+        relatedEpisodes: data['__IPLAYER_REDUX_STATE__.relatedEpisodes'],
+      } as IPlayerData
+    }
 
-				if (subtitle) {
-					const episodeNumber = subtitle.match(/[0-9]{1,2}/g),
-						episodeTitle =
-							subtitle.match(/: [0-9]{1,2}. (.*)/)?.[1] ??
-							subtitle.match(/: (.*)/)?.[1];
+    let iPlayerVideo: HTMLVideoElement | MediaData | undefined = document
+      .querySelector('smp-toucan-player')
+      ?.shadowRoot
+      ?.querySelector('smp-playback')
+      ?.shadowRoot
+      ?.querySelector<HTMLVideoElement>('video') ?? undefined
 
-					if (/Series [0-9]{1,2}: (Episode )?[0-9]{1,2}.?/i.test(subtitle)) {
-						subtitle = `S${episodeNumber[0]}${
-							episodeNumber[1] ? `:E${episodeNumber[1]}` : ""
-						}${episodeTitle ? ` ${episodeTitle}` : ""}`;
-					}
-				}
+    if (!iPlayerVideo && VideoMedia)
+      iPlayerVideo = VideoMedia
+    // OD Programming:
+    if (iPlayerVideo && path.includes('/iplayer/episode')) {
+      const simulcast = iPlayer.versions?.find(version => version.kind === 'simulcast')
+      const isSimulcast = Boolean(simulcast) || iPlayer.episode?.live
+      if (!iPlayerVideo.duration || isSimulcast || isLiveTimeline(iPlayerVideo)) {
+        if (iPlayer.channel?.onAir || isSimulcast || isLiveTimeline(iPlayerVideo)) {
+          if (usePresenceName) {
+            presenceData.name = iPlayer.episode?.title ?? presenceData.name
+            presenceData.details = iPlayer.episode?.subtitle?.match(/: (.*)/)?.[1]
+              ?? iPlayer.episode?.subtitle
+              ?? strings.Live
+            presenceData.state = iPlayer.episode?.subtitle ?? strings.Live
+          }
+          else {
+            presenceData.details = (iPlayer.channel ?? iPlayer.episode)?.title
+            presenceData.state = iPlayer.episode?.subtitle || strings.Live
+          }
 
-				presenceData.details = (iPlayer.episode || iPlayer.header).title;
-				presenceData.state =
-					subtitle || iPlayer.episode?.labels?.category || "Animation";
+          setCover(iPlayer.episode?.images?.standard)
 
-				setCover(iPlayer.episode?.images?.promotional);
+          presenceData.smallImageKey = Assets.Live
+          presenceData.smallImageText = strings.Live
 
-				[presenceData.startTimestamp, presenceData.endTimestamp] =
-					presence.getTimestamps(
-						iPlayerVideo.currentTime,
-						iPlayerVideo.duration
-					);
+          if (simulcast?.startTime) {
+            presenceData.startTimestamp = simulcast.startTime
+            if (simulcast.endTime && simulcast.endTime > Math.floor(Date.now() / 1000))
+              presenceData.endTimestamp = simulcast.endTime
+            else
+              delete presenceData.endTimestamp
+          }
+          else {
+            delete presenceData.startTimestamp
+            delete presenceData.endTimestamp
+          }
+        }
+        else if (!iPlayer.channel) {
+          setCover(
+            iPlayer.episode?.images?.promotional
+            ?? iPlayer.header?.imageTemplate,
+          )
 
-				presenceData.smallImageKey = iPlayerVideo.paused
-					? Assets.Pause
-					: Assets.Play;
-				presenceData.smallImageText = iPlayerVideo.paused
-					? strings.pause
-					: strings.play;
+          presenceData.details = iPlayer.relatedEpisodes?.count || iPlayer.header?.episodeCount
+            ? strings.viewSeries
+            : strings.viewMovie
+          presenceData.state = (iPlayer.episode || iPlayer.header)?.title
+          presenceData.startTimestamp = browsingTimestamp
+        }
+      }
+      else {
+        let subtitle = document.querySelector(
+          ':is(.typo.typo--skylark.play-cta__subtitle, .typo.typo--bold.play-cta__title.typo--skylark)',
+        )?.textContent
+        let episodeTitle
 
-				if (iPlayer.relatedEpisodes?.count) {
-					presenceData.buttons = [
-						{
-							label: strings.buttonViewEpisode,
-							url: `https://www.bbc.co.uk/iplayer/episode/${
-								document.location.pathname.split("/")[3]
-							}`,
-						},
-						{
-							label: strings.buttonViewSeries,
-							url: `https://www.bbc.co.uk/iplayer/episode/${iPlayer.relatedEpisodes.episodes[0].episode.id}`,
-						},
-					];
-				} else {
-					presenceData.buttons = [
-						{
-							label: presenceData.state.toLocaleLowerCase().includes("film")
-								? strings.buttonViewMovie
-								: strings.watchVideo,
-							url: `https://www.bbc.co.uk/iplayer/episode/${
-								document.location.pathname.split("/")[3]
-							}`,
-						},
-					];
-				}
+        if (subtitle) {
+          const episodeNumber = subtitle.match(/\d{1,2}/g) ?? []
+          episodeTitle = subtitle.match(/: \d{1,2}. (.*)/)?.[1]
+            ?? subtitle.match(/: (.*)/)?.[1]
 
-				if (iPlayerVideo.paused) {
-					delete presenceData.startTimestamp;
-					delete presenceData.endTimestamp;
-				}
-			}
-		}
-	} else if (path.includes("/sounds")) {
-		const soundData = await presence.getPageletiable<SoundData>(
-			"__PRELOADED_STATE__"
-		);
+          if (/Series \d{1,2}: (?:Episode )?\d{1,2}.?/i.test(subtitle)) {
+            if (usePresenceName) {
+              subtitle = `Season ${episodeNumber[0]}, Episode ${episodeNumber[1] || 1
+              }`
+            }
+            else {
+              subtitle = `S${episodeNumber[0]}${episodeNumber[1] ? `:E${episodeNumber[1]}` : ''
+              }${episodeTitle ? ` ${episodeTitle}` : ''}`
+            }
+          }
+        }
 
-		presenceData.details = strings.browse;
+        const { title } = iPlayer.episode || iPlayer.header!
+        const state = subtitle || iPlayer.episode?.labels?.category || 'Animation'
 
-		if (path.includes("/play/")) {
-			const isLive = path.includes("Live:");
-			setCover(soundData.programmes.current.image_url);
+        if (usePresenceName)
+          presenceData.name = title
 
-			if (isLive) {
-				presenceData.details =
-					SoundMedia.title ?? soundData.programmes.current.titles.primary;
-				presenceData.state = soundData.programmes.current.titles.secondary;
-				presenceData.smallImageKey = Assets.Live;
-			} else {
-				presenceData.details =
-					SoundMedia.title ?? soundData.programmes.current.titles.primary;
-				presenceData.state = soundData.programmes.current.titles.secondary;
-				presenceData.smallImageKey =
-					SoundMedia.paused || !SoundMedia.duration
-						? Assets.Pause
-						: Assets.Play;
-			}
+        presenceData.details = usePresenceName ? episodeTitle : title
+        presenceData.state = usePresenceName ? subtitle : state
 
-			presenceData.smallImageText =
-				SoundMedia.paused || !SoundMedia.duration
-					? isLive
-						? strings.Live
-						: strings.pause
-					: strings.play;
+        setCover(iPlayer.episode?.images?.promotional);
 
-			[presenceData.startTimestamp, presenceData.endTimestamp] =
-				presence.getTimestamps(SoundMedia.currentTime, SoundMedia.duration);
+        [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestamps(
+          iPlayerVideo.currentTime,
+          iPlayerVideo.duration,
+        )
 
-			presenceData.buttons = [
-				{
-					label: strings.buttonListenAlong,
-					url: `https://www.bbc.co.uk/sounds/play/${
-						document.URL.split("/")[5]
-					}`,
-				},
-			];
+        presenceData.smallImageKey = iPlayerVideo.paused
+          ? Assets.Pause
+          : Assets.Play
+        presenceData.smallImageText = iPlayerVideo.paused
+          ? strings.pause
+          : strings.play
 
-			if (SoundMedia.paused || isLive) {
-				delete presenceData.startTimestamp;
-				delete presenceData.endTimestamp;
-			}
-		}
-	} else if (path.includes("/sport")) {
-		presenceData.details = strings.browse;
-		presenceData.smallImageKey = Assets.Reading;
+        if (iPlayer.relatedEpisodes?.count) {
+          presenceData.buttons = [
+            {
+              label: strings.buttonViewEpisode,
+              url: href,
+            },
+            {
+              label: strings.buttonViewSeries,
+              url: href,
+            },
+          ]
+        }
+        else {
+          presenceData.buttons = [
+            {
+              label: state.toLocaleLowerCase().includes('film')
+                ? strings.buttonViewMovie
+                : strings.watchVideo,
+              url: href,
+            },
+          ]
+        }
 
-		const title = document.querySelector("h1")?.textContent;
+        if (iPlayerVideo.paused) {
+          delete presenceData.startTimestamp
+          delete presenceData.endTimestamp
+        }
+      }
+    }
+    // Live Programming
+    else if (path.includes('/iplayer/live')) {
+      if (iPlayerVideo) {
+        const channelId = path.split('/').pop()
+        const channelName = formatChannelName(channelId) || iPlayer.channel?.title
+        const programmeName = document.querySelector('.channel-panel-item__link__title')?.textContent?.trim()
+          || 'Unknown Programme'
 
-		if (path.includes("/sport/formula1")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = "Formula 1";
+        presenceData.details = programmeName
+        presenceData.state = `Live: ${channelName}`
+        presenceData.smallImageKey = Assets.Live
+        presenceData.smallImageText = strings.Live
 
-			if (path.includes("/latest")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/standings")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/sport/formula1/")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			} else if (path.includes("/formula1/")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			}
-		} else if (path.includes("/sport/football")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = "Football";
+        delete presenceData.startTimestamp
+        delete presenceData.endTimestamp
+      }
+      else {
+        presenceData.details = strings.viewPage
+        presenceData.state = 'Live TV'
+        presenceData.smallImageKey = Assets.Reading
+      }
+    }
+  }
+  else if (path.includes('/sounds')) {
+    presenceData.type = ActivityType.Listening
+    const liveServiceId = path.match(/\/sounds\/play\/live[/:]([^/?#]+)/)?.[1]
 
-			if (path.includes("/averages")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/teams/")) {
-				presenceData.details = strings.viewTeam;
-				presenceData.state = title;
-			} else if (path.includes("/gossip")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			} else if (path.includes("/transfers")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			} else if (path.includes("/top-scorers")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/womens")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = "Women's Cricket";
-			} else if (path.includes("/leagues-cups")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/european")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = "European's Cricket";
-			} else if (path.includes("/football/")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			}
-		} else if (path.includes("/sport/cricket")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = "Cricket";
+    if (liveServiceId) {
+      const broadcast = await getLiveBroadcast(liveServiceId)
+      const station = broadcast?.network.short_title
+      const audio = document.querySelector<HTMLAudioElement>('audio')
+      // No player found means we can't tell, and a live page is most likely playing
+      const paused = audio?.paused ?? (SoundMedia.duration ? SoundMedia.paused : false)
 
-			presenceData.smallImageText = "Cricket";
-			if (path.includes("/averages")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/teams/")) {
-				presenceData.details = strings.viewTeam;
-				presenceData.state = title;
-				presenceData.smallImageText = "Cricket Team";
-			} else if (
-				document.querySelector(
-					"li.sp-c-sport-navigation__item.sp-c-sport-navigation__item--secondary-selected"
-				)?.textContent === "Squad"
-			) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/counties")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/womens")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = "Women's Cricket";
-			} else if (path.includes("/scorecard/")) {
-				presenceData.details = "Viewing scoredcard of:";
+      if (usePresenceName && station)
+        presenceData.name = `BBC ${station}`
 
-				presenceData.state = `${
-					document.querySelector(
-						"span.sp-c-fixture__team.sp-c-fixture__team--time.sp-c-fixture__team--time-home.gel-long-primer > span > span"
-					)?.textContent
-				} & ${
-					document.querySelector(
-						"div.sp-c-fixture__wrapper > span.sp-c-fixture__team.sp-c-fixture__team--time.sp-c-fixture__team--time-away.gel-long-primer > span > span"
-					)?.textContent
-				}`;
-			} else if (path.includes("/sport/cricket/")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			}
-		} else if (path.includes("/rugby-union")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = "Rugby Union";
+      presenceData.details = broadcast?.titles.primary || station
+      presenceData.state = broadcast?.titles.secondary || (station ? `${strings.Live}: ${station}` : strings.Live)
+      setCover(broadcast?.image_url)
 
-			presenceData.smallImageText = "Rugby Union";
+      presenceData.smallImageKey = paused ? Assets.Pause : Assets.Live
+      presenceData.smallImageText = paused ? strings.pause : strings.Live
 
-			if (path.includes("/teams/")) {
-				presenceData.details = strings.viewTeam;
-				presenceData.state = title;
-				presenceData.smallImageText = "Rugby Union Team";
-			} else if (path.includes("/rugby-union/")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			}
-		} else if (path.includes("/tennis")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = "Tennis";
+      if (broadcast && !paused) {
+        presenceData.startTimestamp = Math.floor(Date.parse(broadcast.start) / 1000)
+        presenceData.endTimestamp = Math.floor(Date.parse(broadcast.end) / 1000)
+      }
+      else {
+        delete presenceData.startTimestamp
+        delete presenceData.endTimestamp
+      }
 
-			presenceData.smallImageText = "Tennis";
+      presenceData.buttons = [
+        {
+          label: strings.buttonListenAlong,
+          url: href,
+        },
+      ]
+    }
+    else if (path.includes('/play/')) {
+      if (lastPath !== path) {
+        lastPath = path
+        const data = await presence.getPageVariable<Record<string, any>>(
+          '__PRELOADED_STATE__.programmes',
+        )
+        soundData = {
+          programmes: data['__PRELOADED_STATE__.programmes'],
+        } as SoundData
+      }
 
-			if (path.includes("/Live-scores")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/order-of-play")) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = title;
-			} else if (path.includes("/tennis/")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			}
-		} else if (path.includes("/golf")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = "Golf";
+      setCover(soundData.programmes?.current.image_url)
 
-			presenceData.smallImageText = "Golf";
+      presenceData.details = SoundMedia.title ?? soundData.programmes?.current.titles.primary
+      presenceData.state = soundData.programmes?.current.titles.secondary
+      presenceData.smallImageKey = SoundMedia.paused || !SoundMedia.duration
+        ? Assets.Pause
+        : Assets.Play
+      presenceData.smallImageText = SoundMedia.paused || !SoundMedia.duration
+        ? strings.pause
+        : strings.play;
 
-			if (path.includes("/athletics/")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			}
-		} else if (path.includes("/cycling")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = "Cycling";
+      [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestamps(SoundMedia.currentTime, SoundMedia.duration)
 
-			presenceData.smallImageText = "Cycling";
+      presenceData.buttons = [
+        {
+          label: strings.buttonListenAlong,
+          url: href,
+        },
+      ]
 
-			if (path.includes("/cycling/")) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			}
-		} else if (path.includes("/sport/")) {
-			presenceData.details = strings.readingArticle;
-			presenceData.state = title;
-			presenceData.buttons = [
-				{
-					label: strings.buttonReadArticle,
-					url: document.baseURI,
-				},
-			];
+      if (SoundMedia.paused) {
+        delete presenceData.startTimestamp
+        delete presenceData.endTimestamp
+      }
+    }
+  }
+  else if (path.includes('/sport')) {
+    presenceData.details = strings.browse
+    presenceData.smallImageKey = Assets.Reading
 
-			if (VideoMedia.duration) {
-				presenceData.details = title;
-				presenceData.state = document.querySelector("time")?.textContent;
+    const title = document.querySelector('h1')?.textContent
 
-				handleVideo();
+    if (path.includes('/sport/formula1')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = 'Formula 1'
 
-				presenceData.buttons = [
-					{
-						label: strings.watchVideo,
-						url: document.baseURI,
-					},
-				];
-			}
-		}
+      if (path.includes('/latest')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/standings')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/sport/formula1/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+      else if (path.includes('/formula1/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+    }
+    else if (path.includes('/sport/football')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = 'Football'
 
-		if (path.includes("/scores-fixtures")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = title;
-		} else if (path.includes("/table")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = title;
-		} else if (path.includes("/results")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = title;
-		} else if (path.includes("/calendar")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = title;
-		} else if (path.includes("/leaderboard")) {
-			presenceData.details = strings.viewPage;
-			presenceData.state = title;
-		} else if (path.includes("/av/") && VideoMedia.duration) {
-			presenceData.details = title;
-			presenceData.state = document.querySelector(
-				"span.qa-status-date-output"
-			)?.textContent;
+      if (path.includes('/averages')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/teams/')) {
+        presenceData.details = strings.viewTeam
+        presenceData.state = title
+      }
+      else if (path.includes('/gossip')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+      else if (path.includes('/transfers')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+      else if (path.includes('/top-scorers')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/womens')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = 'Women\'s Cricket'
+      }
+      else if (path.includes('/leagues-cups')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/european')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = 'European\'s Cricket'
+      }
+      else if (path.includes('/football/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+    }
+    else if (path.includes('/sport/cricket')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = 'Cricket'
 
-			handleVideo();
+      presenceData.smallImageText = 'Cricket'
+      if (path.includes('/averages')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/teams/')) {
+        presenceData.details = strings.viewTeam
+        presenceData.state = title
+        presenceData.smallImageText = 'Cricket Team'
+      }
+      else if (
+        document.querySelector(
+          'li.sp-c-sport-navigation__item.sp-c-sport-navigation__item--secondary-selected',
+        )?.textContent === 'Squad'
+      ) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/counties')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/womens')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = 'Women\'s Cricket'
+      }
+      else if (path.includes('/scorecard/')) {
+        presenceData.details = 'Viewing scoredcard of:'
 
-			presenceData.buttons = [
-				{
-					label: strings.watchVideo,
-					url: document.baseURI,
-				},
-			];
-		}
-	} else if (path.includes("/weather")) {
-		presenceData.details = strings.browse;
+        presenceData.state = `${document.querySelector(
+          'span.sp-c-fixture__team.sp-c-fixture__team--time.sp-c-fixture__team--time-home.gel-long-primer > span > span',
+        )?.textContent
+        } & ${document.querySelector(
+          'div.sp-c-fixture__wrapper > span.sp-c-fixture__team.sp-c-fixture__team--time.sp-c-fixture__team--time-away.gel-long-primer > span > span',
+        )?.textContent
+        }`
+      }
+      else if (path.includes('/sport/cricket/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+    }
+    else if (path.includes('/rugby-union')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = 'Rugby Union'
 
-		const title = (
-				document.querySelector("h2#wr-c-regional-forecast-slice__title") ||
-				document.querySelector("h1")
-			)?.textContent,
-			weatherPages: {
-				[key: string]: PresenceData;
-			} = {
-				"/weather/search": {
-					details: strings.searchFor,
-					state: document.querySelector<HTMLInputElement>(
-						"input.location-search-input__input"
-					)?.value,
-					smallImageKey: Assets.Search,
-				},
-				"/weather/map": {
-					details: strings.viewPage,
-					state: "Map",
-					smallImageKey:
-						"https://cdn.rcd.gg/PreMiD/websites/B/BBC/assets/12.png",
-				},
-				"/weather/([0-9])": {
-					details: "Viewing weather of:",
-					state:
-						document
-							.querySelector("h1#wr-location-name-id")
-							?.textContent.split(" - ")[0] || null,
-					smallImageText: document.querySelector(
-						"div.wr-day-summary > div > span"
-					)?.textContent,
-					smallImageKey: Assets.Reading,
-					buttons: [
-						{
-							label: "View Weather",
-							url: document.baseURI,
-						},
-					],
-				},
-				"/weather/features/([0-9])": {
-					details: strings.readingArticle,
-					state: title,
-					smallImageKey: Assets.Reading,
-					buttons: [
-						{
-							label: strings.buttonReadArticle,
-							url: document.baseURI,
-						},
-					],
-				},
-			};
+      presenceData.smallImageText = 'Rugby Union'
 
-		for (const [key, value] of Object.entries(weatherPages)) {
-			if (path.match(key) && !VideoMedia.duration) {
-				presenceData = { ...presenceData, ...value };
-				break;
-			} else if (VideoMedia.duration) {
-				presenceData.details = title;
-				presenceData.state = (
-					document.querySelector("time>span") || document.querySelector("b")
-				)?.textContent;
+      if (path.includes('/teams/')) {
+        presenceData.details = strings.viewTeam
+        presenceData.state = title
+        presenceData.smallImageText = 'Rugby Union Team'
+      }
+      else if (path.includes('/rugby-union/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+    }
+    else if (path.includes('/tennis')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = 'Tennis'
 
-				handleVideo();
-			}
-		}
-	} else if (path.includes("/news") || path.includes("/future")) {
-		presenceData.details = strings.browse;
-		presenceData.smallImageKey = Assets.Reading;
+      presenceData.smallImageText = 'Tennis'
 
-		const title = document.querySelector("h1")?.textContent,
-			newsPages: {
-				[key: string]: PresenceData;
-			} = {
-				"/have_your_say": {
-					details: strings.viewPage,
-					state: "Your Coronavirus Stories",
-				},
-				"/coronavirus": {
-					details: strings.viewPage,
-					state: "Coronavirus pandemic",
-				},
-				"(-|/)([0-9])": {
-					details: strings.readingArticle,
-					state: title,
-					buttons: [
-						{
-							label: strings.buttonReadArticle,
-							url: document.baseURI,
-						},
-					],
-				},
-				"/in_pictures": {
-					details: strings.viewPage,
-					state: "In Pictures",
-				},
-				"/reality_check": {
-					details: strings.viewPage,
-					state: "Reality Check",
-				},
-				"/the_reporters": {
-					details: strings.viewPage,
-					state: "Long Reads",
-				},
-				"/newsbeat": {
-					details: strings.readingArticle,
-					state: "Newsbeat",
-				},
-				"/blogs": {
-					details: strings.viewPage,
-					state: "Blogs",
-				},
-				"/technology": {
-					details: strings.viewPage,
-					state: "Technology news",
-				},
-				"/science-environment": {
-					details: strings.viewPage,
-					state: "Technology news",
-				},
-				"/stories": {
-					details: strings.viewPage,
-					state: "Stories",
-				},
-				"/entertainment_and_arts": {
-					details: strings.viewPage,
-					state: "Entertainment and arts",
-				},
-				"/health": {
-					details: strings.viewPage,
-					state: "Health news",
-				},
-				"/world": {
-					details: strings.viewPage,
-					state: "World news",
-				},
-				"/business": {
-					details: strings.viewPage,
-					state: "Business news",
-				},
-			};
+      if (path.includes('/Live-scores')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/order-of-play')) {
+        presenceData.details = strings.viewPage
+        presenceData.state = title
+      }
+      else if (path.includes('/tennis/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+    }
+    else if (path.includes('/golf')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = 'Golf'
 
-		for (const [key, value] of Object.entries(newsPages)) {
-			if (
-				path.match(key) &&
-				!path.includes("/world/") &&
-				!VideoMedia.duration
-			) {
-				presenceData = { ...presenceData, ...value };
-				break;
-			} else if (path.includes("/world/") && !VideoMedia.duration) {
-				presenceData.details = strings.viewPage;
-				presenceData.state = "World News";
-			} else if (VideoMedia.duration) {
-				presenceData.details = title;
-				presenceData.state = document.querySelector("time")?.textContent;
+      presenceData.smallImageText = 'Golf'
 
-				handleVideo();
+      if (path.includes('/athletics/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+    }
+    else if (path.includes('/cycling')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = 'Cycling'
 
-				presenceData.buttons = [
-					{
-						label: strings.watchVideo,
-						url: document.baseURI,
-					},
-				];
-			} else if (path.match(/(-[0-9])/)) {
-				presenceData.details = strings.readingArticle;
-				presenceData.state = title;
+      presenceData.smallImageText = 'Cycling'
 
-				presenceData.buttons = [
-					{
-						label: strings.buttonReadArticle,
-						url: document.baseURI,
-					},
-				];
-			}
-		}
-	} else if (path === "/search") {
-		presenceData.details = strings.searchFor;
-		presenceData.state =
-			document.querySelector<HTMLInputElement>("#search-input")?.value;
-		presenceData.smallImageKey = Assets.Search;
-	}
+      if (path.includes('/cycling/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+    }
+    else if (path.includes('/sport/')) {
+      presenceData.details = strings.readingArticle
+      presenceData.state = title
+      presenceData.buttons = [
+        {
+          label: strings.buttonReadArticle,
+          url: href,
+        },
+      ]
 
-	if (!buttons) delete presenceData.buttons;
-	if (!showCover && String(presenceData.largeImageKey).startsWith("https")) {
-		presenceData.largeImageKey =
-			assets[`${serviceName}_logo` as keyof typeof assets];
-	}
+      if (VideoMedia.duration) {
+        presenceData.details = title
+        presenceData.state = document.querySelector('time')?.textContent
 
-	if (presenceData.details === strings.searchFor && !showSearchQuery)
-		presenceData.state = "(Hidden)";
+        handleVideo()
 
-	presence.setActivity(presenceData);
-});
+        presenceData.buttons = [
+          {
+            label: strings.watchVideo,
+            url: href,
+          },
+        ]
+      }
+    }
 
-/* eslint-disable camelcase */
+    if (path.includes('/scores-fixtures')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = title
+    }
+    else if (path.includes('/table')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = title
+    }
+    else if (path.includes('/results')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = title
+    }
+    else if (path.includes('/calendar')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = title
+    }
+    else if (path.includes('/leaderboard')) {
+      presenceData.details = strings.viewPage
+      presenceData.state = title
+    }
+    else if (path.includes('/av/') && VideoMedia.duration) {
+      presenceData.details = title
+      presenceData.state = document.querySelector(
+        'span.qa-status-date-output',
+      )?.textContent
+
+      handleVideo()
+
+      presenceData.buttons = [
+        {
+          label: strings.watchVideo,
+          url: href,
+        },
+      ]
+    }
+  }
+  else if (path.includes('/weather')) {
+    presenceData.details = strings.browse
+
+    const title = (
+      document.querySelector('h2#wr-c-regional-forecast-slice__title')
+      || document.querySelector('h1')
+    )?.textContent
+    const weatherPages: {
+      [key: string]: PresenceData
+    } = {
+      '/weather/search': {
+        details: strings.searchSomething,
+        smallImageKey: Assets.Search,
+      },
+      '/weather/map': {
+        details: strings.viewPage,
+        state: 'Map',
+      },
+      '/weather/([0-9])': {
+        details: 'Viewing weather of:',
+        state: document
+          .querySelector('h1#wr-location-name-id')
+          ?.textContent
+          ?.split(' - ')[0] || null,
+        smallImageText: document.querySelector(
+          'div.wr-day-summary > div > span',
+        )?.textContent,
+        smallImageKey: Assets.Reading,
+        buttons: [
+          {
+            label: 'View Weather',
+            url: href,
+          },
+        ],
+      },
+      '/weather/articles/': {
+        details: strings.readingArticle,
+        state: title,
+        smallImageKey: Assets.Reading,
+        buttons: [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ],
+      },
+    }
+
+    for (const [key, value] of Object.entries(weatherPages)) {
+      if (path.match(key) && !VideoMedia.duration) {
+        presenceData = { ...presenceData, ...value } as PresenceData
+        break
+      }
+      else if (VideoMedia.duration) {
+        presenceData.details = title
+        presenceData.state = (
+          document.querySelector('time>span') || document.querySelector('b')
+        )?.textContent
+
+        handleVideo()
+      }
+    }
+  }
+  else if (path.includes('/news') || path.includes('/future')) {
+    presenceData.details = strings.browse
+    presenceData.smallImageKey = Assets.Reading
+
+    const title = document.querySelector('h1')?.textContent
+    const newsPages: {
+      [key: string]: PresenceData
+    } = {
+      '/have_your_say': {
+        details: strings.viewPage,
+        state: 'Your Coronavirus Stories',
+      },
+      '/coronavirus': {
+        details: strings.viewPage,
+        state: 'Coronavirus pandemic',
+      },
+      '(-|/)([0-9])': {
+        details: strings.readingArticle,
+        state: title,
+        buttons: [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ],
+      },
+      '/in_pictures': {
+        details: strings.viewPage,
+        state: 'In Pictures',
+      },
+      '/reality_check': {
+        details: strings.viewPage,
+        state: 'Reality Check',
+      },
+      '/the_reporters': {
+        details: strings.viewPage,
+        state: 'Long Reads',
+      },
+      '/newsbeat': {
+        details: strings.readingArticle,
+        state: 'Newsbeat',
+      },
+      '/blogs': {
+        details: strings.viewPage,
+        state: 'Blogs',
+      },
+      '/technology': {
+        details: strings.viewPage,
+        state: 'Technology news',
+      },
+      '/science-environment': {
+        details: strings.viewPage,
+        state: 'Technology news',
+      },
+      '/stories': {
+        details: strings.viewPage,
+        state: 'Stories',
+      },
+      '/entertainment_and_arts': {
+        details: strings.viewPage,
+        state: 'Entertainment and arts',
+      },
+      '/health': {
+        details: strings.viewPage,
+        state: 'Health news',
+      },
+      '/world': {
+        details: strings.viewPage,
+        state: 'World news',
+      },
+      '/business': {
+        details: strings.viewPage,
+        state: 'Business news',
+      },
+    }
+
+    for (const [key, value] of Object.entries(newsPages)) {
+      if (
+        path.match(key)
+        && !path.includes('/world/')
+        && !VideoMedia.duration
+      ) {
+        presenceData = { ...presenceData, ...value } as PresenceData
+        break
+      }
+      else if (path.includes('/world/') && !VideoMedia.duration) {
+        presenceData.details = strings.viewPage
+        presenceData.state = 'World News'
+      }
+      else if (VideoMedia.duration) {
+        presenceData.details = title
+        presenceData.state = document.querySelector('time')?.textContent
+
+        handleVideo()
+
+        presenceData.buttons = [
+          {
+            label: strings.watchVideo,
+            url: href,
+          },
+        ]
+      }
+      else if (path.includes('/articles/')) {
+        presenceData.details = strings.readingArticle
+        presenceData.state = title
+
+        presenceData.buttons = [
+          {
+            label: strings.buttonReadArticle,
+            url: href,
+          },
+        ]
+      }
+    }
+  }
+  else if (path === '/search') {
+    presenceData.details = strings.searchSomething
+    presenceData.smallImageKey = Assets.Search
+  }
+
+  if (!buttons)
+    delete presenceData.buttons
+  if (!showCover)
+    presenceData.largeImageKey = LogoAssets[`Bbc${serviceName}`]
+
+  presence.setActivity(presenceData)
+})
+
 // This is just to make sure that the above line is not removed by eslint
 // while at the same time passing Deepscan issues.
-const unused_variable = (a: number, b: number) => a + b;
-unused_variable(1, 2);
+const unused_variable = (a: number, b: number) => a + b
+unused_variable(1, 2)
 interface IPlayerData {
-	episode?: {
-		title: string;
-		subtitle: string;
-		Live: boolean;
-		images: {
-			portrait?: string;
-			standard: string;
-			promotional: string;
-			promotional_with_logo: string;
-		};
-		labels?: {
-			category: string;
-		};
-	};
-	relatedEpisodes?: {
-		count: number;
-		episodes: {
-			episode: {
-				id: string;
-				title: string;
-				subtile: string;
-				labels?: {
-					category: string;
-				};
-			};
-		}[];
-	};
-	channel?: {
-		title: string;
-		onAir: boolean;
-	};
-	header?: {
-		title: string;
-		episodeCount: number;
-		imageTemplate: string;
-	};
+  episode?: {
+    title: string
+    subtitle: string
+    live: boolean
+    images: {
+      portrait?: string
+      standard: string
+      promotional: string
+      promotional_with_logo: string
+    }
+    labels?: {
+      category: string
+    }
+  }
+  versions?: {
+    kind: string
+    startTime: number
+    endTime: number
+  }[]
+  relatedEpisodes?: {
+    count: number
+    episodes: {
+      episode: {
+        id: string
+        title: string
+        subtile: string
+        labels?: {
+          category: string
+        }
+      }
+    }[]
+  }
+  channel?: {
+    title: string
+    onAir: boolean
+  }
+  header?: {
+    title: string
+    episodeCount: number
+    imageTemplate: string
+  }
 }
 
 interface IFrameData {
-	video: {
-		duration: number;
-		currentTime: number;
-		paused: boolean;
-	};
-	audio: {
-		duration: number;
-		currentTime: number;
-		paused: boolean;
-		title: string;
-	};
+  video: {
+    duration: number
+    currentTime: number
+    paused: boolean
+  }
+  audio: {
+    duration: number
+    currentTime: number
+    paused: boolean
+    title: string
+  }
 }
 
 interface MediaData {
-	duration: number;
-	currentTime: number;
-	paused: boolean;
-	cover?: string;
-	title?: string;
+  duration: number
+  currentTime: number
+  paused: boolean
+  cover?: string
+  title?: string
+}
+
+interface LiveBroadcast {
+  start: string
+  end: string
+  image_url?: string
+  network: {
+    short_title: string
+  }
+  titles: {
+    primary?: string
+    secondary?: string
+  }
 }
 
 interface SoundData {
-	programmes: {
-		current: {
-			image_url: string;
-			titles: {
-				primary?: string;
-				secondary?: string;
-			};
-		};
-	};
-	modules: {
-		data: {
-			data: {
-				titles?: {
-					primary?: string;
-					secondary?: string;
-					tertiary?: string;
-				};
-				network: {
-					shortTitle: string;
-				};
-			}[];
-		}[];
-	};
+  programmes?: {
+    current: {
+      image_url: string
+      titles: {
+        primary?: string
+        secondary?: string
+      }
+    }
+  }
+  modules?: {
+    data: {
+      data: {
+        titles?: {
+          primary?: string
+          secondary?: string
+          tertiary?: string
+        }
+        network: {
+          shortTitle: string
+        }
+      }[]
+    }[]
+  }
 }
-/* eslint-enable camelcase */

@@ -1,21 +1,23 @@
 {
-	"$schema": "https://schemas.premid.app/metadata/1.10",
-	"author": {
-		"name": "TheSlowly",
-		"id": "505071508851523599"
-	},
-	"service": "Picarto",
-	"description": {
-		"en": "Picarto is the world’s leading live streaming platform for creative minds. Come join us and watch artists from all over the world during their creative process!",
-		"nl": "Picarto is 's werelds toonaangevende live streamingplatform voor creatieve geesten. Doe mee en kijk naar artiesten van over de hele wereld tijdens hun creatieve proces!"
-	},
-	"url": "picarto.tv",
-	"version": "1.2.25",
-	"logo": "https://cdn.rcd.gg/PreMiD/websites/P/Picarto/assets/logo.png",
-	"thumbnail": "https://cdn.rcd.gg/PreMiD/websites/P/Picarto/assets/thumbnail.png",
-	"color": "#35A775",
-	"category": "videos",
-	"tags": [
-		"video"
-	]
+  "$schema": "https://schemas.premid.app/metadata/1.17",
+  "apiVersion": 1,
+  "author": {
+    "name": "TheSlowly",
+    "id": "505071508851523599"
+  },
+  "service": "Picarto",
+  "description": {
+    "en": "Picarto is the world’s leading live streaming platform for creative minds. Come join us and watch artists from all over the world during their creative process!",
+    "nl": "Picarto is 's werelds toonaangevende live streamingplatform voor creatieve geesten. Doe mee en kijk naar artiesten van over de hele wereld tijdens hun creatieve proces!"
+  },
+  "url": "picarto.tv",
+  "regExp": "^https?[:][/][/]([a-z0-9-]+[.])*picarto[.]tv[/]",
+  "version": "1.3.2",
+  "logo": "https://cdn.rcd.gg/PreMiD/websites/P/Picarto/assets/logo.png",
+  "thumbnail": "https://cdn.rcd.gg/PreMiD/websites/P/Picarto/assets/thumbnail.png",
+  "color": "#35A775",
+  "category": "videos",
+  "tags": [
+    "video"
+  ]
 }

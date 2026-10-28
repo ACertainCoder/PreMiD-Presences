@@ -1,22 +1,111 @@
 {
-	"$schema": "https://schemas.premid.app/metadata/1.10",
-	"author": {
-		"name": "TONi_C137#1757",
-		"id": "328213965299515393"
-	},
-	"service": "ZDFmediathek",
-	"description": {
-		"de": "ZDFmediathek (auch ZDF Mediathek) ist das Video-on-Demand-Angebot des Zweiten Deutschen Fernsehens. Es startete 2001 im Zuge der IFA in Berlin und wurde – wieder zu deren Anlass – zum 1. September 2007 überarbeitet. Ein weiterer Relaunch erfolgte am 28. Oktober 2016.",
-		"en": "ZDFmediathek is a shared video-on-demand streaming service offered by German public-sector broadcasters of ZDF."
-	},
-	"url": "www.zdf.de",
-	"version": "1.0.19",
-	"logo": "https://cdn.rcd.gg/PreMiD/websites/Z/ZDFmediathek/assets/logo.png",
-	"thumbnail": "https://cdn.rcd.gg/PreMiD/websites/Z/ZDFmediathek/assets/thumbnail.jpg",
-	"color": "#FE7405",
-	"category": "videos",
-	"tags": [
-		"videos",
-		"livestreams"
-	]
+  "$schema": "https://schemas.premid.app/metadata/1.17",
+  "apiVersion": 1,
+  "author": {
+    "name": "TONi_C137#1757",
+    "id": "328213965299515393"
+  },
+  "service": "ZDFmediathek",
+  "description": {
+    "de": "ZDFmediathek (auch ZDF Mediathek) ist das Video-on-Demand-Angebot des Zweiten Deutschen Fernsehens. Es startete 2001 im Zuge der IFA in Berlin und wurde – wieder zu deren Anlass – zum 1. September 2007 überarbeitet. Ein weiterer Relaunch erfolgte am 28. Oktober 2016.",
+    "en": "ZDFmediathek is a shared video-on-demand streaming service offered by German public-sector broadcasters of ZDF."
+  },
+  "url": "www.zdf.de",
+  "regExp": "^https?[:][/][/](www[.])?zdf[.]de[/]",
+  "version": "2.0.1",
+  "logo": "https://cdn.rcd.gg/PreMiD/websites/Z/ZDFmediathek/assets/logo.png",
+  "thumbnail": "https://cdn.rcd.gg/PreMiD/websites/Z/ZDFmediathek/assets/thumbnail.jpg",
+  "color": "#FE7405",
+  "category": "videos",
+  "tags": [
+    "videos",
+    "livestreams"
+  ],
+  "settings": [
+    {
+      "id": "privacy",
+      "title": "Privacy Mode",
+      "icon": "fad fa-user-secret",
+      "value": false,
+      "description": "Hide what you are watching and only show that you are browsing ZDFmediathek."
+    },
+    {
+      "id": "hidePaused",
+      "title": "Hide on Pause",
+      "icon": "fad fa-pause-circle",
+      "value": false,
+      "if": {
+        "privacy": false
+      },
+      "description": "Clear the activity while the video is paused."
+    },
+    {
+      "id": "cover",
+      "title": "Show Cover Image",
+      "icon": "fas fa-image",
+      "value": true,
+      "if": {
+        "privacy": false
+      },
+      "description": "Display the show's cover as the large image instead of the ZDF logo."
+    },
+    {
+      "id": "channelLogo",
+      "title": "Show Channel Logo as Small Icon",
+      "icon": "fas fa-tv",
+      "value": true,
+      "if": {
+        "privacy": false
+      },
+      "description": "Use the broadcaster's logo (ZDF, 3sat, ZDFneo, …) as the small icon while playing. When disabled, the classic play/pause icon is shown instead."
+    },
+    {
+      "id": "timestamps",
+      "title": "Show Timestamps",
+      "icon": "fad fa-stopwatch",
+      "value": true,
+      "description": "Show the elapsed and remaining time of the video."
+    },
+    {
+      "id": "buttons",
+      "title": "Show Buttons",
+      "icon": "fas fa-compress-arrows-alt",
+      "value": true,
+      "if": {
+        "privacy": false
+      },
+      "description": "Display interactive buttons in the Discord activity."
+    },
+    {
+      "id": "vidDetail",
+      "title": "Details (top line)",
+      "icon": "fas fa-comment-alt-edit",
+      "value": "%title%",
+      "if": {
+        "privacy": false
+      },
+      "placeholder": "Use %title%, %series%, %episode%, %genre%, %year%"
+    },
+    {
+      "id": "vidState",
+      "title": "State (bottom line)",
+      "icon": "fas fa-comment-alt-edit",
+      "value": "%series%",
+      "if": {
+        "privacy": false
+      },
+      "placeholder": "Same as top line, or use {0} to remove the row completely"
+    },
+    {
+      "id": "displayType",
+      "title": "Pick Status Display",
+      "icon": "fad fa-user-edit",
+      "value": 2,
+      "values": [
+        "Activity Name",
+        "Details",
+        "State"
+      ]
+    }
+  ]
 }

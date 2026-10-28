@@ -1,69 +1,67 @@
-const presence = new Presence({
-		clientId: "1001288215388495953",
-	}),
-	browsingStamp = Math.floor(Date.now() / 1000);
+import { Assets, getTimestamps, timestampFromFormat } from 'premid'
 
-const enum Assets {
-	Logo = "https://cdn.rcd.gg/PreMiD/websites/C/Crave/assets/logo.png",
+const presence = new Presence({
+  clientId: '1001288215388495953',
+})
+const browsingStamp = Math.floor(Date.now() / 1000)
+
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/C/Crave/assets/logo.png',
 }
 
-presence.on("UpdateData", async () => {
-	const presenceData: PresenceData = { largeImageKey: Assets.Logo };
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = { largeImageKey: ActivityAssets.Logo }
 
-	if (document.querySelector(".jw-video")) {
-		// if contains video
-		if (document.querySelector(".jw-icon-playback").ariaLabel !== "Play") {
-			// video is playing
+  if (document.querySelector('.jw-video')) {
+    // if contains video
+    if (document.querySelector('.jw-icon-playback')?.ariaLabel !== 'Play') {
+      // video is playing
+      [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestamps(
+        timestampFromFormat(
+          document.querySelector('.jw-text-elapsed')?.textContent ?? '',
+        ),
+        timestampFromFormat(
+          document.querySelector('.jw-text-duration')?.textContent ?? '',
+        ),
+      )
 
-			const elapsed = presence.timestampFromFormat(
-					document.querySelector(".jw-text-elapsed").textContent
-				),
-				duration = presence.timestampFromFormat(
-					document.querySelector(".jw-text-duration").textContent
-				);
+      presenceData.smallImageKey = Assets.Play
+      presenceData.smallImageText = 'Playing'
+    }
+    else {
+      presenceData.smallImageKey = Assets.Pause
+      presenceData.smallImageText = 'Paused'
+    }
 
-			presenceData.startTimestamp = presence.getTimestamps(
-				elapsed,
-				duration
-			)[0];
-			presenceData.endTimestamp = presence.getTimestamps(elapsed, duration)[1];
+    presenceData.buttons = [
+      {
+        label: 'Watch',
+        url: document.location.href,
+      },
+    ]
 
-			presenceData.smallImageKey = Assets.Play;
-			presenceData.smallImageText = "Playing";
-		} else {
-			presenceData.smallImageKey = Assets.Pause;
-			presenceData.smallImageText = "Paused";
-		}
+    if (document.querySelector('.bm-icon-episode-list')) {
+      // if the video is an episode
+      const details = document.querySelector('.jw-title-primary')?.textContent || ''
+      // split episode details to achieve {showName, episodeNumber, episodeName}
+      // regex finds the season + episode number then split the entire title with said regex
+      const epDetails = details.split(/S\d+:E\d+/.exec(details)?.[0] ?? '')
 
-		presenceData.buttons = [
-			{
-				label: "Watch",
-				url: document.location.href,
-			},
-		];
+      presenceData.state = `${
+        /S\d+:E\d+/.exec(details)?.[0]
+      } - ${epDetails[1]?.trim()}` // {episodeNumber} - {episodeName}
+      presenceData.details = epDetails[0]?.trim() // {showName}
+    }
+    else {
+      // video is a movie
+      presenceData.details = document.querySelector('.jw-title-primary')?.textContent // movie title
+    }
+  }
+  else {
+    // default to browsing
+    presenceData.details = 'Browsing...'
+    presenceData.startTimestamp = browsingStamp
+  }
 
-		if (document.querySelector(".bm-icon-episode-list")) {
-			// if the video is an episode
-			const details =
-					document.querySelector(".jw-title-primary").textContent || "",
-				// split episode details to achieve {showName, episodeNumber, episodeName}
-				// regex finds the season + episode number then split the entire title with said regex
-				epDetails = details.split(/(S([0-9]+):E([0-9]+))/g.exec(details)[0]);
-
-			presenceData.state = `${
-				/(S([0-9]+):E([0-9]+))/g.exec(details)[0]
-			} - ${epDetails[1].trim()}`; // {episodeNumber} - {episodeName}
-			presenceData.details = epDetails[0].trim(); // {showName}
-		} else {
-			// video is a movie
-			presenceData.details =
-				document.querySelector(".jw-title-primary").textContent; // movie title
-		}
-	} else {
-		// default to browsing
-		presenceData.details = "Browsing...";
-		presenceData.startTimestamp = browsingStamp;
-	}
-
-	presence.setActivity(presenceData);
-});
+  presence.setActivity(presenceData)
+})

@@ -1,92 +1,123 @@
+import { Assets } from 'premid'
+
 const presence = new Presence({
-	clientId: "664595715242197008",
-});
+  clientId: '664595715242197008',
+})
 
 function setPresenceData(
-	presenceData: PresenceData,
-	showName: boolean,
-	activeChatDetails: Element,
-	isLoggedIn?: boolean,
-	textArea?: HTMLElement,
-	messagesCount?: number,
-	statusSpan?: HTMLElement
+  presenceData: PresenceData,
+  privacyMode: boolean,
+  activeChatDetails?: HTMLElement,
+  isLoggedIn?: boolean,
+  textArea?: HTMLElement,
+  messagesCount?: number,
+  statusSpan?: HTMLElement,
+  webVersion?: string,
 ): PresenceData {
-	if (activeChatDetails?.textContent) {
-		if (showName) {
-			presenceData.details = `Talking to this ${
-				statusSpan?.textContent.includes("member") ? "group" : "user"
-			}:`;
-			presenceData.state = activeChatDetails.textContent;
-		} else presenceData.details = "Talking to someone";
-		presenceData.smallImageKey =
-			textArea && textArea.textContent.length >= 1
-				? Assets.Writing
-				: Assets.Reading;
-		presenceData.smallImageText =
-			textArea && textArea.textContent.length >= 1
-				? "Typing a message"
-				: `Reading ${messagesCount} message${messagesCount > 1 ? "s" : ""}`;
-	} else if (isLoggedIn) presenceData.details = "Logged in";
-	else presenceData.details = "Logging in...";
-	return presenceData;
+  if (activeChatDetails?.textContent) {
+    let status: string
+    let state: string | undefined | null
+    state = activeChatDetails.textContent
+
+    if (statusSpan?.textContent?.includes('member')) {
+      status = 'Chatting in a group'
+    }
+    else if (statusSpan?.textContent?.includes('subscriber')) {
+      status = 'Viewing a broadcast'
+    }
+    else {
+      status = 'Talking to'
+      if (webVersion === 'k') {
+        if (document.querySelector('.sidebar-header__subtitle')?.textContent?.includes('member')) {
+          status = 'Chatting in a group'
+          state = document.querySelector('.sidebar-header__title .peer-title')?.textContent
+        }
+      }
+      else if (webVersion === 'a') {
+        if (document.querySelector('.group-status')?.textContent?.includes('member')) {
+          status = 'Chatting in a group'
+          state = document.querySelector('#TopicListHeader .fullName')?.textContent
+        }
+      }
+    }
+
+    if (!privacyMode) {
+      presenceData.details = `${status}:`
+      presenceData.state = state
+    }
+    else {
+      if (status === 'Talking to')
+        status += ' someone'
+      presenceData.details = status
+    }
+    presenceData.smallImageKey = textArea?.textContent && textArea.textContent.length >= 1
+      ? Assets.Writing
+      : Assets.Reading
+    presenceData.smallImageText = textArea?.textContent && textArea.textContent.length >= 1
+      ? 'Typing a message'
+      : `Reading ${messagesCount} message${(messagesCount ?? 0) > 1 ? 's' : ''}`
+  }
+  else if (isLoggedIn) {
+    presenceData.details = 'Logged in'
+  }
+  else {
+    presenceData.details = 'Logging in...'
+  }
+  return presenceData
 }
 
-presence.on("UpdateData", async () => {
-	const showName: boolean = await presence.getSetting<boolean>("name"); // presence settings
-	let presenceData: PresenceData = {
-			largeImageKey:
-				"https://cdn.rcd.gg/PreMiD/websites/T/Telegram/assets/logo.png",
-		}, // default PresenceData
-		isLoggedIn: boolean, // determine if logged in or still logging in
-		activeChatDetails: HTMLElement, // details of current active chat
-		textArea: HTMLElement, // text area where user input message, for writing indicator
-		messagesCount: number, // total message count inside active chat
-		statusSpan: HTMLElement; // additional details of active chat, just below activeChatDetails, to determine if active chat is group or user
-	if (document.location.href.includes("legacy=1")) {
-		// Telegram Web version 0.7.0
-		(activeChatDetails = document.querySelector(
-			"body > div.page_wrap > div:nth-child(1) > div > div > div.tg_head_main_wrap > div > div.tg_head_peer_title_wrap > a > div > span.tg_head_peer_title"
-		)),
-			(isLoggedIn =
-				document.querySelectorAll(".im_history_not_selected_wrap")?.length > 0),
-			(textArea = document.querySelector("div.composer_rich_textarea")),
-			(messagesCount = document.querySelectorAll("div.im_message_body").length),
-			(statusSpan = document.querySelector(".tg_head_peer_status"));
-	} else if (document.location.href.includes("/k/")) {
-		// Telegram WebK 1.2.0 (113)
-		(activeChatDetails = document.querySelector(
-			"#column-center > div.chats-container > div.chat > div.sidebar-header > div.chat-info-container > div.chat-info > div.person > div.content > div.top > div.user-title > span.peer-title"
-		)),
-			(isLoggedIn =
-				document.querySelector(".chat-background-item.is-visible")
-					?.childElementCount < 1),
-			(textArea = document.querySelector(".input-message-input")),
-			(messagesCount = document.querySelectorAll(".message").length),
-			(statusSpan = document.querySelector(
-				"div.content > div.bottom > div.info > span.i18n"
-			));
-	} else if (document.location.href.includes("/z/")) {
-		// Telegram WebZ 1.35.1
-		(activeChatDetails = document.querySelector(
-			"#MiddleColumn > div.messages-layout > div.MiddleHeader > div.Transition.slide-fade > div.Transition__slide--active > div.chat-info-wrapper > div.ChatInfo > div.info > div.title > h3"
-		)),
-			(isLoggedIn = !!document.querySelector("#middle-column-bg")),
-			(textArea = document.querySelector("#editable-message-text")),
-			(messagesCount = document.querySelectorAll(".Message").length),
-			(statusSpan = document.querySelector("span.status"));
-	}
-	presenceData = {
-		...presenceData,
-		...setPresenceData(
-			presenceData,
-			showName,
-			activeChatDetails,
-			isLoggedIn,
-			textArea,
-			messagesCount,
-			statusSpan
-		),
-	};
+presence.on('UpdateData', async () => {
+  const privacyMode: boolean = await presence.getSetting<boolean>('privacy') // presence settings
+  let presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/T/Telegram/assets/logo.png',
+  } // default PresenceData
+  let isLoggedIn: boolean | undefined // determine if logged in or still logging in
+  let activeChatDetails: HTMLElement | undefined // details of current active chat
+  let textArea: HTMLElement | undefined // text area where user input message, for writing indicator
+  let messagesCount: number | undefined // total message count inside active chat
+  let statusSpan: HTMLElement | undefined // additional details of active chat, just below activeChatDetails, to determine if active chat is group or user
+  let webVersion: string | undefined // version of Telegram Web
+  const { href } = document.location
+  if (href.includes('legacy=1')) {
+    // Telegram Web version 0.7.0
+    activeChatDetails = document.querySelector<HTMLElement>('.tg_head_peer_title') ?? undefined
+    isLoggedIn = document.querySelectorAll('.im_history_not_selected_wrap')?.length > 0
+    textArea = document.querySelector<HTMLElement>('div.composer_rich_textarea') ?? undefined
+    messagesCount = document.querySelectorAll('div.im_message_body').length
+    statusSpan = document.querySelector<HTMLElement>('.tg_head_peer_status') ?? undefined
+    webVersion = 'legacy'
+  }
+  else if (href.includes('/k/')) {
+    // Telegram WebK 2.2 (589)
+    activeChatDetails = document.querySelector<HTMLElement>('.person .peer-title') ?? undefined
+    isLoggedIn = (document.querySelector('.chat-background-item.is-visible')?.childElementCount ?? 0) < 1
+    textArea = document.querySelector<HTMLElement>('.input-field-input-fake') ?? undefined
+    messagesCount = document.querySelectorAll('.message').length
+    statusSpan = document.querySelector<HTMLElement>('.person .info') ?? undefined
+    webVersion = 'k'
+  }
+  else if (href.includes('/a/')) {
+    // Telegram Web A 10.9.65
+    activeChatDetails = document.querySelector<HTMLElement>('.ChatInfo .fullName') ?? undefined
+    isLoggedIn = !!document.querySelector('#MiddleColumn')
+    textArea = document.querySelector<HTMLElement>('#editable-message-text') ?? undefined
+    messagesCount = document.querySelectorAll('.Message').length
+    statusSpan = document.querySelector<HTMLElement>('span.status') ?? undefined
+    webVersion = 'a'
+  }
+  presenceData = {
+    ...presenceData,
+    ...setPresenceData(
+      presenceData,
+      privacyMode,
+      activeChatDetails,
+      isLoggedIn,
+      textArea,
+      messagesCount,
+      statusSpan,
+      webVersion,
+    ),
+  }
 
-	presence.setActivity(presenceData);
-});
+  presence.setActivity(presenceData)
+})

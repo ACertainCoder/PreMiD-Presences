@@ -1,128 +1,134 @@
+import { ActivityType, Assets, getTimestamps } from 'premid'
+
 const presence = new Presence({
-	clientId: "935597176426491924",
-});
+  clientId: '935597176426491924',
+})
 
 async function getStrings() {
-	return presence.getStrings({
-		play: "general.watchingVid",
-		pause: "general.paused",
-	});
+  return presence.getStrings({
+    play: 'general.watchingAnime',
+    pause: 'general.paused',
+  })
+}
+
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/A/AnimeGO/assets/logo.jpg',
 }
 
 let video = {
-		duration: 0,
-		currentTime: 0,
-		paused: true,
-	},
-	strings: Awaited<ReturnType<typeof getStrings>>;
+  exists: false,
+  duration: 0,
+  currentTime: 0,
+  paused: true,
+}
+let strings: Awaited<ReturnType<typeof getStrings>>
+
+function getCurrentTypeSpelling(typeContent?: string) {
+  switch (typeContent) {
+    case 'manga':
+      return 'манги'
+    case 'character':
+    case 'characters':
+      return 'персонажа'
+    case 'person':
+      return 'человека'
+    default:
+      return 'аниме'
+  }
+}
 
 presence.on(
-	"iFrameData",
-	(data: { duration: number; currentTime: number; paused: boolean }) => {
-		video = data;
-	}
-);
+  'iFrameData',
+  (data: unknown) => {
+    video = data as typeof video
+  },
+)
 
-presence.on("UpdateData", async () => {
-	const [privacy, time, logo, buttons] = await Promise.all([
-			presence.getSetting<boolean>("privacy"),
-			presence.getSetting<boolean>("time"),
-			presence.getSetting<boolean>("logo"),
-			presence.getSetting<boolean>("buttons"),
-		]),
-		presenceData: PresenceData = {
-			details: "Где-то на сайте",
-			largeImageKey:
-				"https://cdn.rcd.gg/PreMiD/websites/A/AnimeGO/assets/logo.jpg",
-			smallImageText: "AnimeGO",
-		},
-		typeContent = document
-			.querySelector("meta[property='og:url']")
-			.getAttribute("content")
-			.split("/")[3],
-		typeCurrent =
-			typeContent === "anime"
-				? "аниме"
-				: typeContent === "manga"
-				? "манги"
-				: typeContent === "character" || typeContent === "characters"
-				? "персонажа"
-				: "человека";
+presence.on('UpdateData', async () => {
+  const [privacy, time, logo, buttons] = await Promise.all([
+    presence.getSetting<boolean>('privacy'),
+    presence.getSetting<boolean>('time'),
+    presence.getSetting<boolean>('logo'),
+    presence.getSetting<boolean>('buttons'),
+  ])
+  const presenceData: PresenceData = {
+    details: 'Где-то на сайте',
+    largeImageKey: ActivityAssets.Logo,
+    smallImageText: 'AnimeGO',
+  }
+  const { pathname, href } = document.location
+  const currentType = getCurrentTypeSpelling(pathname.split('/')[1])
 
-	if (!strings) strings = await getStrings();
+  if (!strings)
+    strings = await getStrings()
 
-	if (document.location.pathname === "/")
-		presenceData.details = "На главной странице";
-	else if (
-		document.location.pathname === "/anime" ||
-		document.location.pathname === "/manga" ||
-		document.location.pathname === "/characters" ||
-		document.location.pathname.match(
-			/(\/(anime|manga|characters)\/(season|genre|type|status|filter|studio|dubbing)\/)/
-		)
-	) {
-		presenceData.details = `В поиске ${typeCurrent}`;
-		if (!privacy) {
-			presenceData.state = document.querySelector(
-				".entity-title#anime-list-title h1"
-			).textContent;
-		}
-	} else if (
-		document.location.pathname.match(/\/(anime|manga|character|person)\//)
-	) {
-		const elementContent = typeContent === "person" ? "people" : typeContent,
-			titleContent = document.querySelector(
-				`.${elementContent}-title h1`
-			).textContent,
-			image = document
-				.querySelector<HTMLImageElement>(
-					`.${elementContent}-poster div:nth-child(2) img`
-				)
-				.srcset.split(" ")[0];
-		presenceData.details = `Смотрит страницу ${typeCurrent}`;
-		if (!privacy) {
-			presenceData.state = titleContent;
-			if (logo) {
-				presenceData.largeImageKey = image;
-				presenceData.smallImageKey =
-					"https://cdn.rcd.gg/PreMiD/websites/A/AnimeGO/assets/logo.jpg";
-			}
-			if (buttons) {
-				presenceData.buttons = [
-					{
-						label: "Открыть страницу",
-						url: document
-							.querySelector("meta[property='og:url']")
-							.getAttribute("content"),
-					},
-				];
-			}
-		}
+  if (pathname === '/') {
+    presenceData.details = 'На главной странице'
+  }
+  else if (
+    pathname === '/anime'
+    || pathname === '/manga'
+    || pathname === '/characters'
+    || /\/(?:anime|manga|characters)\/(?:season|genre|type|status|filter|studio|dubbing)\//.test(pathname)
+  ) {
+    presenceData.details = `В поиске ${currentType}`
+    presenceData.state = document.querySelector('.entity__title h1')?.textContent
+  }
+  else if (
+    /\/(?:anime|manga|character|person)\//.test(pathname)
+  ) {
+    const titleContent = document.querySelector<HTMLHeadElement>('.entity__title h1')?.textContent
+      ?? document.querySelector<HTMLHeadElement>('.person__title h1')?.textContent ?? ''
+    const image = document.querySelector<HTMLImageElement>(`.entity__poster img`)?.src
+      ?? document.querySelector<HTMLImageElement>(`.person__picture img`)?.src
 
-		if (video.duration) {
-			const selected = document.querySelector<HTMLSelectElement>(
-					"select[name='series']"
-				),
-				serie = `${selected.options[selected.selectedIndex].text} - ${
-					document.querySelector(
-						".episode-info-item:nth-child(2) span:nth-child(2)"
-					).textContent
-				}`;
-			presenceData.details = `Смотрит ${privacy ? typeCurrent : titleContent}`;
-			presenceData.state = privacy ? "" : serie;
-			presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play;
-			presenceData.smallImageText = video.paused ? strings.pause : strings.play;
-			if (time) {
-				if (video.paused) {
-					delete presenceData.startTimestamp;
-					delete presenceData.endTimestamp;
-				} else {
-					[presenceData.startTimestamp, presenceData.endTimestamp] =
-						presence.getTimestamps(video.currentTime, video.duration);
-				}
-			}
-		}
-	}
+    presenceData.details = `Смотрит страницу ${currentType}`
+    presenceData.state = titleContent
+    if (!privacy && logo && image) {
+      presenceData.largeImageKey = image
+      presenceData.smallImageKey = ActivityAssets.Logo
+    }
+    if (!privacy) {
+      presenceData.stateUrl = href
+      presenceData.largeImageUrl = href
+    }
+    presenceData.buttons = [
+      {
+        label: 'Открыть страницу',
+        url: href,
+      },
+    ]
 
-	presence.setActivity(presenceData);
-});
+    if (video.exists) {
+      const selectEpisodes = document.querySelector<HTMLSelectElement>('select[name=\'series\']')
+      const currentEpisodeTitle = document.querySelector('.episode-info__name .episode-info__value')?.textContent
+      const serie = `${selectEpisodes?.options[selectEpisodes?.selectedIndex]?.text}${currentEpisodeTitle ? ` - ${currentEpisodeTitle}` : ''}`
+      presenceData.details = privacy ? `Смотрит ${currentType}` : titleContent
+      presenceData.state = serie
+      presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play
+      presenceData.smallImageText = video.paused ? strings.pause : strings.play
+      delete presenceData.stateUrl
+      if (!privacy)
+        presenceData.detailsUrl = href
+
+      if (time) {
+        (presenceData as PresenceData).type = ActivityType.Watching
+        if (video.paused) {
+          delete presenceData.startTimestamp
+          delete presenceData.endTimestamp
+        }
+        else {
+          [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestamps(video.currentTime, video.duration)
+        }
+      }
+    }
+  }
+
+  if (privacy || !buttons)
+    delete presenceData.buttons
+
+  if (privacy)
+    delete presenceData.state
+
+  presence.setActivity(presenceData)
+})

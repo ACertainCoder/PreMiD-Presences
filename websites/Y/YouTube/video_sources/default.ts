@@ -1,45 +1,54 @@
-import { Resolver } from "../util";
+import type { Resolver } from '../util/index.js'
 
 function isActive(): boolean {
-	return !!getTitle() && !!getUploader() && !!getVideoID() && !!getChannelURL();
+  return !!getTitle() && !!getUploader() && !!getVideoID() && !!getChannelURL()
 }
 
-function getTitle(): string {
-	if (document.location.pathname.includes("/watch")) {
-		return document
-			.querySelector("h1 yt-formatted-string.ytd-video-primary-info-renderer")
-			?.textContent.trim();
-	} else
-		return document.querySelector(".ytd-miniplayer .title")?.textContent.trim();
+function getTitle(): string | undefined {
+  return getBaseSection()
+    ?.querySelector('h1 yt-formatted-string.ytd-video-primary-info-renderer')
+    ?.textContent
+    ?.trim()
 }
 
-function getUploader(): string {
-	return (
-		document
-			.querySelector("ytd-video-owner-renderer .ytd-channel-name a")
-			?.textContent.trim() ||
-		document.querySelector("yt-formatted-string#owner-name")?.textContent.trim()
-	);
+function getUploader(): string | undefined {
+  return getBaseSection()
+    ?.querySelector('a.ytd-video-description-infocards-section-renderer #title')
+    ?.textContent
+    ?.trim()
 }
 
-export function getVideoID(): string {
-	return document
-		.querySelector("#page-manager > ytd-watch-flexy")
-		?.getAttribute("video-id");
+export function getVideoID(): string | undefined {
+  return (
+    getBaseSection()
+      ?.querySelector('#page-manager > [video-id]')
+      ?.getAttribute('video-id')
+      ?? new URLSearchParams(document.location.search).get('v')
+  ) ?? undefined
 }
 
-export function getChannelURL(): string {
-	return document.querySelector<HTMLLinkElement>(
-		"#top-row ytd-video-owner-renderer > a"
-	)?.href;
+export function getChannelURL(): string | undefined {
+  return getBaseSection()?.querySelector<HTMLAnchorElement>(
+    'a.ytd-video-description-infocards-section-renderer',
+  )?.href
+}
+
+function getBaseSection(): HTMLElement | null {
+  return document.querySelector('.ytd-page-manager:not([hidden])')
+}
+
+function isMusic(): boolean {
+  const microformat = JSON.parse(document.querySelector('#microformat script[type="application/ld+json"]')?.textContent || '{}')
+  return microformat?.genre === 'Music'
 }
 
 const resolver: Resolver = {
-	isActive,
-	getTitle,
-	getUploader,
-	getChannelURL,
-	getVideoID,
-};
+  isActive,
+  getTitle,
+  getUploader,
+  getChannelURL,
+  getVideoID,
+  isMusic,
+}
 
-export default resolver;
+export default resolver

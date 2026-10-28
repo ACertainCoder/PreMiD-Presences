@@ -1,33 +1,37 @@
 {
-	"$schema": "https://schemas.premid.app/metadata/1.10",
-	"author": {
-		"id": "189690228292845568",
-		"name": "angelolz"
-	},
-	"service": "Nebula",
-	"description": {
-		"en": "Nebula is the home of smart, thoughtful videos, podcasts, and classes from your favorite creators."
-	},
-	"url": "nebula.tv",
-	"matches": [
-		"*://nebula.tv/*"
-	],
-	"version": "1.0.0",
-	"logo": "https://i.imgur.com/VnwSEyu.png",
-	"thumbnail": "https://i.imgur.com/fNXHoQg.jpeg",
-	"color": "#67bef5",
-	"category": "videos",
-	"tags": [
-		"nebula",
-		"video",
-		"media"
-	],
-	"settings": [
-		{
-			"id": "buttons",
-			"title": "Show Buttons",
-			"icon": "fa-regular fa-rectangle-list",
-			"value": true
-		}
-	]
+  "$schema": "https://schemas.premid.app/metadata/1.17",
+  "apiVersion": 1,
+  "author": {
+    "id": "189690228292845568",
+    "name": "angelolz"
+  },
+  "contributors": [
+    {
+      "id": "791491962620346420",
+      "name": "DiaDuckk"
+    }
+  ],
+  "service": "Nebula",
+  "description": {
+    "en": "Nebula is the home of smart, thoughtful videos, podcasts, and classes from your favorite creators."
+  },
+  "url": "nebula.tv",
+  "regExp": "^https?[:][/][/]([a-z0-9-]+[.])*nebula[.]tv[/]",
+  "version": "1.1.3",
+  "logo": "https://cdn.rcd.gg/PreMiD/websites/N/Nebula/assets/logo.png",
+  "thumbnail": "https://cdn.rcd.gg/PreMiD/websites/N/Nebula/assets/thumbnail.jpeg",
+  "color": "#67bef5",
+  "category": "videos",
+  "tags": [
+    "video",
+    "media"
+  ],
+  "settings": [
+    {
+      "id": "buttons",
+      "title": "Show Buttons",
+      "icon": "fa-solid fa-rectangle-list",
+      "value": true
+    }
+  ]
 }

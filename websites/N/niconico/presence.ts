@@ -1,155 +1,184 @@
+import { ActivityType, Assets, getTimestampsFromMedia } from 'premid'
+
+import createContext from './utils/createContext.js'
+import getSettings from './utils/getSettings.js'
+
 const presence = new Presence({
-		clientId: "609220157910286346",
-	}),
-	strings = presence.getStrings({
-		play: "general.playing",
-		pause: "general.paused",
-		live: "general.live",
-	});
+  clientId: '609220157910286346',
+})
 
-function getTimesec(
-	elapsedString = "00:00",
-	durationString = "00:00",
-	separator = ":"
-): { elapsedSec: number; durationSec: number } {
-	const elapsed = elapsedString.split(separator).map(parseInt),
-		duration = durationString.split(separator).map(parseInt);
+presence.on('UpdateData', async () => {
+  // create context every update
+  const initialized = await createContext(presence)
 
-	let elapsedSec: number, durationSec: number;
+  // set presenceData
+  const presenceData: PresenceData = {
+    largeImageKey: initialized?.Logo,
+    details: initialized?.presenceStrings.browse,
+  }
 
-	switch (elapsed.length) {
-		case 3: {
-			elapsedSec = elapsed[0] * 60 * 60 + elapsed[1] * 60 + elapsed[2];
-			break;
-		}
-		case 2: {
-			elapsedSec = elapsed[0] * 60 + elapsed[1];
-			break;
-		}
-		case 1: {
-			[elapsedSec] = elapsed;
-			break;
-		}
-	}
+  const { privacy, buttons, ads, pause, playback } = await getSettings(presence)
+  const video = document.querySelector<HTMLVideoElement>('video')
 
-	switch (duration.length) {
-		case 3: {
-			durationSec = duration[0] * 60 * 60 + duration[1] * 60 + duration[2];
-			break;
-		}
-		case 2: {
-			durationSec = duration[0] * 60 + duration[1];
-			break;
-		}
-		case 1: {
-			[durationSec] = duration;
-			break;
-		}
-	}
+  // get hostname and more info
+  const { hostname, href, pathname } = document.location
 
-	return { elapsedSec, durationSec };
-}
+  switch (hostname) {
+    case 'www.nicovideo.jp': {
+      if (pathname.startsWith('/watch/')) {
+        const disabledControlElement = document.querySelectorAll<HTMLButtonElement>(
+          'button[id="tooltip:«r8»:trigger"][disabled]',
+        )
+        if (disabledControlElement.length !== 0 && ads && !privacy) {
+          presenceData.details = 'Watching an ad'
+        }
+        else {
+          const ownerElement = document.querySelectorAll(
+            'a[data-anchor-area="video_information"]:not(:has(div))',
+          ).item(1)
 
-presence.on("UpdateData", async () => {
-	switch (location.hostname) {
-		case "www.nicovideo.jp": {
-			if (
-				location.pathname.startsWith("/watch/") &&
-				document.querySelector(".VideoPlayer video")
-			) {
-				const ownerElement =
-					document.querySelector(".ChannelInfo-pageLink") ||
-					document.querySelector(".VideoOwnerInfo-pageLink") ||
-					null;
-				let owner;
-				if (ownerElement) {
-					[, owner] = ownerElement.textContent.match(/(.+) さん$/) || [
-						ownerElement.textContent,
-					];
-				} else owner = "Deleted User";
+          const imageElement = document.querySelector('meta[property="og:image"]')
 
-				const isPlaying = !!document.querySelector(".PlayerPauseButton"),
-					presenceData: PresenceData = {
-						details: document.querySelector(".VideoTitle").textContent,
-						state: `${owner} - ${location.pathname.match(/..\d+$/)[0]}`,
-						largeImageKey:
-							"https://cdn.rcd.gg/PreMiD/websites/N/niconico/assets/logo.png",
-						smallImageKey: isPlaying ? Assets.Play : Assets.Pause,
-						smallImageText: isPlaying
-							? (await strings).play
-							: (await strings).pause,
-						startTimestamp:
-							Math.floor(Date.now() / 1000) -
-							Math.floor(
-								document.querySelector<HTMLVideoElement>(".VideoPlayer video")
-									.currentTime
-							),
-					};
+          presenceData.details = document.querySelector('main h1')?.textContent
+          presenceData.state = `${ownerElement ? ownerElement.textContent : 'Deleted User'
+          } - ${pathname.match(/..\d+$/)?.[0]}`
+          presenceData.largeImageKey = imageElement
+            ? imageElement.attributes.getNamedItem('content')?.value
+            : initialized?.Logo
+          presenceData.smallImageKey = pause ? !video?.paused ? Assets.Play : Assets.Pause : ''
+          presenceData.smallImageText = pause ? !video?.paused ? initialized?.presenceStrings.play : initialized?.presenceStrings.pause : ''
+          if (video && !video?.paused)
+            [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestampsFromMedia(video)
 
-				presence.setActivity(presenceData);
-			}
-			break;
-		}
+          presenceData.buttons = [
+            {
+              label: initialized?.presenceStrings.buttonWatchVideo ?? 'Watch Video',
+              url: href,
+            },
+          ]
+        }
+      }
+      else if (pathname.startsWith('/search/')) {
+        const searchValue = decodeURIComponent(pathname.slice('/search/'.length))
 
-		case "live.nicovideo.jp":
-		case "live2.nicovideo.jp": {
-			if (location.pathname.startsWith("/watch/lv")) {
-				const presenceData: PresenceData = {
-					details: document.querySelector(
-						" [class^='___program-title___'] span "
-					).textContent,
-					state: `${
-						(
-							document.querySelector("[class^='___channel-name-anchor___']") ??
-							document.querySelector("[class^='___group-name-anchor___']")
-						).textContent
-					} - ${location.pathname.match(/lv\d+/)[0]}`,
-					largeImageKey:
-						"https://cdn.rcd.gg/PreMiD/websites/N/niconico/assets/logo.png",
-					smallImageKey: Assets.Live,
-					smallImageText: (await strings).live,
-					startTimestamp:
-						Math.floor(Date.now() / 1000) -
-						getTimesec(
-							document.querySelector(
-								" span[class^='___time-score___'] span[class^='___value___'] "
-							).textContent
-						).elapsedSec,
-				};
+        presenceData.details = initialized?.presenceStrings.searchSomething
+        presenceData.smallImageKey = Assets.Search
+        presenceData.smallImageText = initialized?.presenceStrings.search
 
-				presence.setActivity(presenceData);
-			} else presence.clearActivity();
+        if (searchValue.trim()) {
+          presenceData.details = initialized?.presenceStrings.searchFor
+          presenceData.state = searchValue
+        }
+      }
+      else if (pathname.startsWith('/tag/')) {
+        const tagValue = decodeURIComponent(pathname.slice('/tag/'.length))
 
-			break;
-		}
+        presenceData.details = initialized?.presenceStrings.searchSomething
+        presenceData.smallImageKey = Assets.Search
+        presenceData.smallImageText = initialized?.presenceStrings.search
 
-		case "seiga.nicovideo.jp": {
-			const presenceData: PresenceData = {
-				largeImageKey:
-					"https://cdn.rcd.gg/PreMiD/websites/N/niconico/assets/logo.png",
-			};
-			if (location.pathname.startsWith("/seiga/im")) {
-				presenceData.details = document.querySelector(".title").textContent;
-				presenceData.state = `${
-					document.querySelector("#ko_watchlist_header.user .user_name strong")
-						.textContent
-				} - ${location.pathname.match(/im\d+/)[0]}`;
+        if (tagValue.trim()) {
+          presenceData.details = initialized?.presenceStrings.searchFor
+          presenceData.state = tagValue
+        }
+      }
+      else if (pathname.startsWith('/mylist_search/')) {
+        const mylistValue = decodeURIComponent(pathname.slice('/mylist_search/'.length))
 
-				presence.setActivity(presenceData);
-			} else if (location.pathname.startsWith("/watch/mg")) {
-				presenceData.details = document.querySelector(".title").textContent;
-				presenceData.state = `${
-					document.querySelector(".author_name").textContent
-				} - ${location.pathname.match(/mg\d+/)[0]}`;
-			}
-			if (presenceData.details) presence.setActivity(presenceData);
-			else presence.setActivity();
+        presenceData.details = initialized?.presenceStrings.searchSomething
+        presenceData.smallImageKey = Assets.Search
+        presenceData.smallImageText = initialized?.presenceStrings.search
 
-			break;
-		}
+        if (mylistValue.trim()) {
+          presenceData.details = initialized?.presenceStrings.searchFor
+          presenceData.state = mylistValue
+        }
+      }
+      else if (pathname.startsWith('/user_search/')) {
+        const user_searchValue = decodeURIComponent(pathname.slice('/user_search/'.length))
 
-		default:
-			presence.setActivity();
-			break;
-	}
-});
+        presenceData.details = initialized?.presenceStrings.searchSomething
+        presenceData.smallImageKey = Assets.Search
+        presenceData.smallImageText = initialized?.presenceStrings.search
+
+        if (user_searchValue.trim()) {
+          presenceData.details = initialized?.presenceStrings.searchFor
+          presenceData.state = user_searchValue
+        }
+      }
+      else if (pathname.startsWith('/series_search/')) {
+        const series_searchValue = decodeURIComponent(pathname.slice('/series_search/'.length))
+
+        presenceData.details = initialized?.presenceStrings.searchSomething
+        presenceData.smallImageKey = Assets.Search
+        presenceData.smallImageText = initialized?.presenceStrings.search
+
+        if (series_searchValue.trim()) {
+          presenceData.details = initialized?.presenceStrings.searchFor
+          presenceData.state = series_searchValue
+        }
+      }
+      break
+    }
+    case 'live.nicovideo.jp':
+    case 'live2.nicovideo.jp': {
+      if (pathname.startsWith('/watch/lv')) {
+        presenceData.details = document.querySelector(
+          ' [class^=\'___program-title___\'] span ',
+        )?.textContent ?? ''
+        presenceData.state = `${
+          (
+            document.querySelector('a.label')
+            ?? document.querySelector('a.channel-name-anchor')
+          )?.textContent
+        } - ${pathname.match(/lv\d+/)?.[0]}`
+        presenceData.smallImageKey = Assets.Live
+        presenceData.smallImageText = initialized?.presenceStrings.live
+        if (video && !video?.paused)
+          [presenceData.startTimestamp] = getTimestampsFromMedia(video)
+
+        presenceData.buttons = [
+          {
+            label: initialized?.presenceStrings.buttonWatchStream ?? 'Watch Stream',
+            url: href,
+          },
+        ]
+      }
+      break
+    }
+    case 'seiga.nicovideo.jp': {
+      if (pathname.startsWith('/seiga/im')) {
+        presenceData.details = document.querySelector('.title')?.textContent
+        presenceData.state = `${
+          document.querySelector('#ko_watchlist_header.user .user_name strong')
+            ?.textContent
+        } - ${pathname.match(/im\d+/)?.[0]}`
+      }
+      else if (pathname.startsWith('/watch/mg')) {
+        presenceData.details = document.querySelector('.title')?.textContent
+        presenceData.state = `${
+          document.querySelector('.author_name')?.textContent
+        } - ${pathname.match(/mg\d+/)?.[0]}`
+      }
+
+      break
+    }
+  }
+
+  if ((presenceData.details || presenceData.state) && privacy) {
+    presenceData.details = initialized?.presenceStrings.buttonWatchVideo
+    delete presenceData.state
+  }
+
+  if (presenceData.startTimestamp && (!playback || privacy))
+    delete presenceData.startTimestamp
+
+  if (playback && !privacy && presenceData.endTimestamp)
+    (presenceData as PresenceData).type = ActivityType.Watching
+  if (presenceData.buttons && (!buttons || privacy))
+    delete presenceData.buttons
+
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.clearActivity()
+})

@@ -1,217 +1,129 @@
-const iframe = new iFrame();
-iframe.on("UpdateData", async () => {
-	let video: HTMLVideoElement;
-	if (document.querySelector("#dogevideo_html5_api")) {
-		video = document.querySelector("#dogevideo_html5_api");
+const iframe = new iFrame()
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (
-		document.querySelector(
-			"#player > div > div.container.pointer-enabled > video"
-		)
-	) {
-		video = document.querySelector(
-			"#player > div > div.container.pointer-enabled > video"
-		);
+function getKnownDuration(video: HTMLVideoElement): number {
+  const d = video.duration
+  if (Number.isFinite(d) && d > 0 && d !== Number.POSITIVE_INFINITY)
+    return d
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (document.querySelector("#sr-video-js-player_html5_api")) {
-		video = document.querySelector("#sr-video-js-player_html5_api");
+  try {
+    if (video.seekable?.length) {
+      const end = video.seekable.end(video.seekable.length - 1)
+      if (Number.isFinite(end) && end > 0)
+        return end
+    }
+  }
+  catch {
+    // ignore
+  }
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (document.querySelector("video")) {
-		video = document.querySelector("video");
+  try {
+    if (video.buffered?.length) {
+      const end = video.buffered.end(video.buffered.length - 1)
+      if (Number.isFinite(end) && end > 0)
+        return end
+    }
+  }
+  catch {
+    // ignore
+  }
+  return Number.NaN
+}
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (
-		document.querySelector(
-			"#mediaplayer > div.jw-wrapper.jw-reset > div.jw-media.jw-reset > video"
-		)
-	) {
-		video = document.querySelector(
-			"#mediaplayer > div.jw-wrapper.jw-reset > div.jw-media.jw-reset > video"
-		);
+function collectVideos(root: Document | ShadowRoot): HTMLVideoElement[] {
+  const out: HTMLVideoElement[] = []
+  for (const v of root.querySelectorAll('video')) out.push(v)
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (document.querySelector("#vid_html5_api")) {
-		video = document.querySelector("#vid_html5_api");
+  for (const el of root.querySelectorAll('*')) {
+    if (el.shadowRoot)
+      out.push(...collectVideos(el.shadowRoot))
+  }
+  return out
+}
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (
-		document.querySelector("#myElement > div.jw-media.jw-reset > video")
-	) {
-		video = document.querySelector(
-			"#myElement > div.jw-media.jw-reset > video"
-		);
+function pickBestVideo(): HTMLVideoElement | null {
+  const videos = collectVideos(document)
+  if (!videos.length)
+    return null
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (document.querySelector("#mgvideo > div.vjs-poster")) {
-		video = document.querySelector("#mgvideo > div.vjs-poster");
+  const withDuration = videos.filter((v) => {
+    const d = getKnownDuration(v)
+    return Number.isFinite(d) && d > 0
+  })
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (document.querySelector("#olvideo_html5_api")) {
-		video = document.querySelector("#olvideo_html5_api");
+  if (!withDuration.length) {
+    const playing = videos.filter(v => !v.paused && v.currentTime > 0)
+    if (playing.length)
+      return playing[0] ?? null
+  }
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (document.querySelector("#videojs_html5_api")) {
-		video = document.querySelector("#videojs_html5_api");
+  const pool = withDuration.length ? withDuration : videos
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (
-		document.querySelector(
-			"#myVideo > div.jw-wrapper.jw-reset > div.jw-media.jw-reset > video"
-		)
-	) {
-		video = document.querySelector(
-			"#myVideo > div.jw-wrapper.jw-reset > div.jw-media.jw-reset > video"
-		);
+  return pool.reduce((a, b) => {
+    const da = getKnownDuration(a)
+    const db = getKnownDuration(b)
+    const ad = Number.isFinite(da) ? da : 0
+    const bd = Number.isFinite(db) ? db : 0
+    return bd >= ad ? b : a
+  })
+}
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (document.querySelector("#mgvideo_html5_api")) {
-		video = document.querySelector("#mgvideo_html5_api");
+function sendVideoState(): void {
+  try {
+    const video = pickBestVideo()
+    if (!video) {
+      iframe.send({
+        duration: 0,
+        currentTime: 0,
+        paused: true,
+        referrer: document.referrer,
+      })
+      return
+    }
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (
-		document.querySelector("#player > div.jw-media.jw-reset > video")
-	) {
-		video = document.querySelector("#player > div.jw-media.jw-reset > video");
+    const duration = getKnownDuration(video)
+    const isFiniteDuration = Number.isFinite(duration) && duration > 0
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	} else if (
-		document.querySelector(
-			"#vstr > div.jw-wrapper.jw-reset > div.jw-media.jw-reset > video"
-		)
-	) {
-		video = document.querySelector(
-			"#vstr > div.jw-wrapper.jw-reset > div.jw-media.jw-reset > video"
-		);
+    iframe.send({
+      duration: isFiniteDuration ? duration : 0,
+      currentTime: video.currentTime,
+      paused: video.paused,
+      referrer: document.referrer,
+    })
+  }
+  catch {
+    // ignore
+  }
+}
 
-		if (video && !isNaN(video.duration)) {
-			iframe.send({
-				iframeVideo: {
-					iFrameVideo: true,
-					currTime: video.currentTime,
-					dur: video.duration,
-					paused: video.paused,
-				},
-			});
-		}
-	}
-});
+let lastTimeUpdateSend = 0
+function sendVideoStateThrottled(): void {
+  const now = Date.now()
+  if (now - lastTimeUpdateSend < 200)
+    return
+  lastTimeUpdateSend = now
+  sendVideoState()
+}
+
+iframe.on('UpdateData', async () => {
+  sendVideoState()
+})
+
+document.addEventListener('loadedmetadata', sendVideoState, true)
+document.addEventListener('durationchange', sendVideoState, true)
+document.addEventListener('canplay', sendVideoState, true)
+document.addEventListener('play', sendVideoState, true)
+document.addEventListener('pause', sendVideoState, true)
+document.addEventListener('seeked', sendVideoState, true)
+document.addEventListener('timeupdate', sendVideoStateThrottled, true)
+document.addEventListener('progress', sendVideoStateThrottled, true)
+
+let moTimer: number | undefined
+const mo = new MutationObserver(() => {
+  if (moTimer !== undefined)
+    window.clearTimeout(moTimer)
+  moTimer = window.setTimeout(() => {
+    moTimer = undefined
+    sendVideoState()
+  }, 400)
+})
+mo.observe(document.documentElement, { subtree: true, childList: true })

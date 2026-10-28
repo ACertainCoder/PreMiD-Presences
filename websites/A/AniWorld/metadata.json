@@ -1,28 +1,118 @@
 {
-	"$schema": "https://schemas.premid.app/metadata/1.10",
-	"author": {
-		"name": "Emijor",
-		"id": "466885774621540372"
-	},
-	"service": "AniWorld",
-	"description": {
-		"en": "Watch now over 1,000+ animes for free on AniWorld. Anime Video-On Demand: ✓ 100% Free ✓ Instantly Online ✓ Exclusive Animes",
-		"de": "Jetzt über 1.000+ Animes als Stream kostenlos bei AniWorld ansehen. Anime Video-On-Demand: ✓ 100% Kostenlos ✓ Sofort online ✓ Exklusive Animes",
-		"nl": "Bekijk nu meer dan 1.000+ animes gratis op AniWorld. Anime Video-On Demand: 100% Gratis ✓ Direct Online ✓ Exclusieve Animes",
-		"vi_VN": "Xem ngay hơn 1,000+ bộ anime tại AniWorld hoàn toàn miễn phí. Anime theo nhu cầu: ✓ 100% miễn phí ✓ Trực tuyến ✓ Những bộ anime độc quyền"
-	},
-	"url": "aniworld.to",
-	"version": "1.0.12",
-	"logo": "https://cdn.rcd.gg/PreMiD/websites/A/AniWorld/assets/logo.png",
-	"thumbnail": "https://cdn.rcd.gg/PreMiD/websites/A/AniWorld/assets/thumbnail.png",
-	"color": "#637cf9",
-	"category": "anime",
-	"tags": [
-		"anime",
-		"streaming",
-		"anicloud",
-		"aniworld"
-	],
-	"iframe": true,
-	"iFrameRegExp": ".*"
+  "$schema": "https://schemas.premid.app/metadata/1.17",
+  "apiVersion": 1,
+  "author": {
+    "name": "Vensin",
+    "id": "531896089096486922"
+  },
+  "contributors": [
+    {
+      "name": "Emijor",
+      "id": "466885774621540372"
+    }
+  ],
+  "service": "AniWorld",
+  "description": {
+    "de": "Jetzt über 1.000+ Animes als Stream kostenlos bei AniWorld ansehen. Anime Video-On-Demand: ✓ 100% Kostenlos ✓ Sofort online ✓ Exklusive Animes",
+    "en": "Watch now over 1,000+ animes for free on AniWorld. Anime Video-On Demand: ✓ 100% Free ✓ Instantly Online ✓ Exclusive Animes",
+    "nl": "Bekijk nu meer dan 1.000+ animes gratis op AniWorld. Anime Video-On Demand: 100% Gratis ✓ Direct Online ✓ Exclusieve Animes",
+    "vi": "Xem ngay hơn 1,000+ bộ anime tại AniWorld hoàn toàn miễn phí. Anime theo nhu cầu: ✓ 100% miễn phí ✓ Trực tuyến ✓ Những bộ anime độc quyền"
+  },
+  "url": "aniworld.to",
+  "regExp": "^https?[:][/][/]([a-z0-9-]+[.])*aniworld[.]to[/]",
+  "version": "2.2.1",
+  "logo": "https://cdn.rcd.gg/PreMiD/websites/A/AniWorld/assets/logo.png",
+  "thumbnail": "https://cdn.rcd.gg/PreMiD/websites/A/AniWorld/assets/thumbnail.png",
+  "color": "#637cf9",
+  "category": "anime",
+  "tags": [
+    "anime",
+    "streaming",
+    "anicloud"
+  ],
+  "iframe": true,
+  "iFrameRegExp": "^https?:\\/\\/[^\\/]+\\/(?:[a-z]{1,6}\\d{0,4}\\/[a-z0-9]{8,16}|embed-[a-z0-9]{8,16}\\.html)",
+  "settings": [
+    {
+      "id": "lang",
+      "multiLanguage": true
+    },
+    {
+      "id": "privacy",
+      "title": "Privacy Mode",
+      "icon": "fad fa-user-secret",
+      "value": false
+    },
+    {
+      "id": "showTitleAsPresence",
+      "title": "Show Anime Title as Presence",
+      "icon": "fad fa-tv",
+      "value": true,
+      "if": {
+        "privacy": false
+      }
+    },
+    {
+      "id": "cover",
+      "title": "Cover Image",
+      "icon": "fas fa-images",
+      "value": 1,
+      "values": [
+        "AniWorld Logo",
+        "Kitsu Poster"
+      ],
+      "if": {
+        "privacy": false
+      }
+    },
+    {
+      "id": "detailsFormat",
+      "title": "Details Row",
+      "icon": "fas fa-comment-alt-edit",
+      "value": "%anime%",
+      "placeholder": "Use %anime%, %episodeTitle%, %progress%, %season%, %episode%, %movie%",
+      "if": {
+        "privacy": false
+      }
+    },
+    {
+      "id": "stateFormat",
+      "title": "State Row",
+      "icon": "fas fa-comment-alt-edit",
+      "value": "%episodeTitle%",
+      "placeholder": "Same as the details row, or {0} to remove the row",
+      "if": {
+        "privacy": false
+      }
+    },
+    {
+      "id": "displayType",
+      "title": "Pick Status Display",
+      "icon": "fad fa-user-edit",
+      "value": 1,
+      "values": [
+        "Activity Name",
+        "Details",
+        "State"
+      ]
+    },
+    {
+      "id": "timestamp",
+      "title": "Show Timestamps",
+      "icon": "fad fa-stopwatch",
+      "value": true,
+      "if": {
+        "privacy": false
+      }
+    },
+    {
+      "id": "hidePaused",
+      "title": "Hide When Paused",
+      "icon": "fad fa-pause-circle",
+      "value": false,
+      "if": {
+        "privacy": false
+      }
+    }
+  ]
 }

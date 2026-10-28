@@ -1,31 +1,50 @@
 {
-	"$schema": "https://schemas.premid.app/metadata/1.10",
-	"author": {
-		"id": "324468886357540865",
-		"name": "Skaytacium"
-	},
-	"service": "Letterboxd",
-	"description": {
-		"en": "The social network for film lovers."
-	},
-	"url": "letterboxd.com",
-	"version": "1.0.16",
-	"logo": "https://cdn.rcd.gg/PreMiD/websites/L/Letterboxd/assets/logo.png",
-	"thumbnail": "https://cdn.rcd.gg/PreMiD/websites/L/Letterboxd/assets/thumbnail.png",
-	"color": "#202830",
-	"category": "socials",
-	"tags": [
-		"movies",
-		"social",
-		"friends",
-		"films",
-		"network"
-	],
-	"settings": [
-		{
-			"id": "show_buttons",
-			"title": "Show buttons",
-			"value": true
-		}
-	]
+  "$schema": "https://schemas.premid.app/metadata/1.17",
+  "apiVersion": 1,
+  "author": {
+    "id": "324468886357540865",
+    "name": "Skaytacium"
+  },
+  "contributors": [
+    {
+      "name": "entraptaa",
+      "id": "153980822670671872"
+    },
+    {
+      "name": "JuJuplayz",
+      "id": "960971439996035083"
+    }
+  ],
+  "service": "Letterboxd",
+  "description": {
+    "en": "The social network for film lovers."
+  },
+  "url": "letterboxd.com",
+  "regExp": "^https?[:][/][/]([a-z0-9-]+[.])*letterboxd[.]com[/]",
+  "version": "1.4.1",
+  "logo": "https://cdn.rcd.gg/PreMiD/websites/L/Letterboxd/assets/logo.png",
+  "thumbnail": "https://cdn.rcd.gg/PreMiD/websites/L/Letterboxd/assets/thumbnail.png",
+  "color": "#202830",
+  "category": "socials",
+  "tags": [
+    "movies",
+    "social",
+    "friends",
+    "films",
+    "network"
+  ],
+  "settings": [
+    {
+      "id": "show_buttons",
+      "title": "Show Buttons",
+      "icon": "fas fa-compress-arrows-alt",
+      "value": true
+    },
+    {
+      "id": "privacy_mode",
+      "title": "Privacy Mode",
+      "icon": "fas fa-user-secret",
+      "value": false
+    }
+  ]
 }

@@ -1,407 +1,429 @@
+import { ActivityType, Assets, getTimestamps, getTimestampsFromMedia, StatusDisplayType, timestampFromFormat } from 'premid'
+
 const presence = new Presence({
-		clientId: "969208766807547917",
-	}),
-	browsingTimestamp = Math.floor(Date.now() / 1000);
+  clientId: '503557087041683458',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
 enum AppVersion {
-	Website = -1,
-	V4 = 4,
-	V5 = 5,
+  Website = -1,
+  V4 = 4,
+  V5 = 5,
 }
 
-const enum Assets {
-	Logo = "https://cdn.rcd.gg/PreMiD/websites/S/Stremio/assets/logo.png",
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/S/Stremio/assets/0.png',
 }
 
 function getAppVersion(hostname: string) {
-	switch (hostname) {
-		case "web.strem.io":
-		case "web.stremio.com":
-			return AppVersion.V5;
-		case "app.strem.io":
-			return AppVersion.V4;
-		default:
-			return AppVersion.Website;
-	}
+  switch (hostname) {
+    case 'www.stremio.com':
+      return AppVersion.Website
+    case 'app.strem.io':
+      return AppVersion.V4
+    default:
+      return AppVersion.V5
+  }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function _eval(js: string): Promise<any> {
-	return new Promise((resolve, reject) => {
-		try {
-			const eventName = "PreMiD_Stremio",
-				script = document.createElement("script");
-
-			window.addEventListener(
-				eventName,
-				(data: CustomEvent) => {
-					script.remove();
-					resolve(data.detail);
-				},
-				{ once: true }
-			);
-			script.id = eventName;
-			script.appendChild(
-				document.createTextNode(`
-			 var core = window.services.core;
-			 var pmdEvent = new CustomEvent("${eventName}", {detail: ${js}});
-			 window.dispatchEvent(pmdEvent);
-			 `)
-			);
-
-			document.head.appendChild(script);
-		} catch (err) {
-			reject(err);
-		}
-	});
+interface Video {
+  isEmbed: boolean
+  isPaused: boolean
+  startTimestamp?: number
+  endTimestamp?: number
 }
 
-type Video = {
-	isEmbed: boolean;
-	isPaused: boolean;
-	startTimestamp?: number;
-	endTimestamp?: number;
-};
-
-function findVideo(presence: Presence): Video | null {
-	const videoElement = document.querySelector<HTMLMediaElement>("video");
-
-	if (videoElement) {
-		const result: Video = { isEmbed: false, isPaused: videoElement.paused };
-
-		if (!isNaN(videoElement?.duration)) {
-			[result.startTimestamp, result.endTimestamp] =
-				presence.getTimestampsfromMedia(videoElement);
-		}
-
-		return result;
-	} else if (document.querySelector("div[class*='player-container']")) {
-		const result: Video = {
-				isEmbed: true,
-				isPaused: !!document.querySelector(
-					"div[class*='control-bar-button'] > svg[icon='ic_play']"
-				),
-			},
-			seekBar = document.querySelector('[class*="seek-bar-container"]');
-		[result.startTimestamp, result.endTimestamp] = presence.getTimestamps(
-			Number(
-				presence.timestampFromFormat(seekBar?.firstElementChild?.textContent)
-			),
-			Number(
-				presence.timestampFromFormat(seekBar?.lastElementChild?.textContent)
-			)
-		);
-
-		return result;
-	} else return null;
+interface RecentLibraryItem {
+  _id: string
+  _mtime: string
+  name: string
+  poster: string
+  type: 'movie' | 'series' | 'channel'
+  state?: {
+    video_id: string
+  }
 }
 
-presence.on("UpdateData", async () => {
-	const presenceData: PresenceData = {
-			largeImageKey: Assets.Logo,
-			startTimestamp: browsingTimestamp,
-		},
-		{ hash, hostname, pathname, href } = document.location,
-		[privacy, thumbnails, buttons, search] = await Promise.all([
-			presence.getSetting<boolean>("privacy"),
-			presence.getSetting<boolean>("thumbnails"),
-			presence.getSetting<boolean>("buttons"),
-			presence.getSetting<boolean>("search"),
-		]),
-		appVersion = getAppVersion(hostname);
+interface RecentLibraryStorage {
+  items: Record<string, RecentLibraryItem>
+}
 
-	if (!privacy && search) {
-		let searchInput: HTMLInputElement;
+function findVideo(): Video | null {
+  const videoElement = document.querySelector<HTMLMediaElement>('video')
 
-		if (appVersion === AppVersion.V4)
-			searchInput = document.querySelector("#global-search-field");
-		else searchInput = document.querySelector("input[class*='search-input']");
+  if (videoElement) {
+    const result: Video = { isEmbed: false, isPaused: videoElement.paused }
 
-		const searchValue = searchInput?.value;
+    if (!Number.isNaN(videoElement?.duration)) {
+      [result.startTimestamp, result.endTimestamp] = getTimestampsFromMedia(videoElement)
+    }
 
-		if (searchValue) {
-			presenceData.details = `Searching for ${searchValue}`;
-			presenceData.smallImageKey = Assets.Search;
-			presence.setActivity(presenceData);
-			return;
-		}
-	}
+    return result
+  }
+  else if (document.querySelector('div[class*=\'player-container\']')) {
+    const result: Video = {
+      isEmbed: true,
+      isPaused: !!document.querySelector(
+        'div[class*=\'control-bar-button\'] > svg[icon=\'ic_play\']',
+      ),
+    }
+    const seekBar = document.querySelector('[class*="seek-bar-container"]');
+    [result.startTimestamp, result.endTimestamp] = getTimestamps(
+      Number(
+        timestampFromFormat(seekBar?.firstElementChild?.textContent ?? ''),
+      ),
+      Number(
+        timestampFromFormat(seekBar?.lastElementChild?.textContent ?? ''),
+      ),
+    )
 
-	switch (appVersion) {
-		case AppVersion.V4:
-		case AppVersion.V5: {
-			const video = findVideo(presence);
+    return result
+  }
+  else {
+    return null
+  }
+}
 
-			if (privacy) {
-				presenceData.details = video !== null ? "Watching" : "Browsing";
-				break;
-			}
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    largeImageKey: ActivityAssets.Logo,
+    startTimestamp: browsingTimestamp,
+    type: ActivityType.Watching,
+    details: 'Stremio',
+    name: 'Stremio',
+  }
+  const { hash, hostname, pathname, href } = document.location
+  const [privacy, thumbnails, buttons, search] = await Promise.all([
+    presence.getSetting<boolean>('privacy'),
+    presence.getSetting<boolean>('thumbnails'),
+    presence.getSetting<boolean>('buttons'),
+    presence.getSetting<boolean>('search'),
+  ])
+  const appVersion = getAppVersion(hostname)
 
-			switch (hash.replace("#/", "").split("/").shift().split("?").shift()) {
-				case "":
-					presenceData.details = "Board";
-					presenceData.buttons = [
-						{
-							label: "View Board",
-							url: href,
-						},
-					];
-					break;
-				case "detail": {
-					if (appVersion === AppVersion.V4) {
-						const title = document.querySelector(
-							"#detail > div:nth-child(3) > div > div.sidebar-info-container > div > div.logo > div"
-						)?.textContent;
-						presenceData.state = title;
-						presenceData.largeImageKey =
-							document
-								.querySelector(
-									"#detail > div.details-less-info > div.details-top > div:nth-child(1)"
-								)
-								?.firstElementChild.getAttribute("src") ?? Assets.Logo;
-					} else {
-						const imgElement = document.querySelector(
-							"div[class*='meta-info-container'] > img[class*='logo']"
-						);
-						presenceData.largeImageKey =
-							imgElement?.getAttribute("src") ?? Assets.Logo;
-						presenceData.state =
-							imgElement?.getAttribute("title") ??
-							document.querySelector(
-								"div[class*='logo-placeholder']:last-child"
-							)?.textContent;
-					}
+  if (!privacy && search) {
+    let searchInput: HTMLInputElement | null = null
 
-					presenceData.details = `Viewing a ${hash.split("/")[2]}`;
-					presenceData.buttons = [
-						{
-							label: "View Metadata",
-							url: href,
-						},
-					];
+    if (appVersion === AppVersion.V4)
+      searchInput = document.querySelector('#global-search-field')
+    else searchInput = document.querySelector('input[class*=\'search-input\']')
 
-					break;
-				}
-				case "addons": {
-					const title = document.querySelector(
-							appVersion === AppVersion.V4
-								? "[class='ng-scope selected']"
-								: "div[class*='addons-content'] > div[class*='selectable-inputs-container'] > div:nth-child(2) > div"
-						)?.textContent,
-						type = document.querySelector(
-							appVersion === AppVersion.V4
-								? "[class='ng-binding ng-scope selected']"
-								: "div[class*='addons-content'] > div[class*='selectable-inputs-container'] > div:nth-child(3) > div"
-						)?.textContent;
+    const searchValue = searchInput?.value
 
-					presenceData.details = `Browsing ${title
-						?.toLowerCase()
-						?.replace(" addons", "")} addons`;
-					presenceData.state = type ?? "All";
-					presenceData.buttons = [
-						{
-							label: "Browse Addons",
-							url: href,
-						},
-					];
-					break;
-				}
-				case "settings": {
-					const section =
-						document.querySelector(
-							appVersion === AppVersion.V4
-								? "[class='ng-scope ng-binding active']"
-								: "div[class*='settings-content'] div[class*='selected']"
-						)?.textContent ?? "General";
-					presenceData.details = `${section} settings`;
-					presenceData.buttons = [
-						{
-							label: "View Settings",
-							url: href,
-						},
-					];
-					break;
-				}
-				case "discover": {
-					const type = document
-							.querySelector(
-								appVersion === AppVersion.V4
-									? "[class='ng-binding ng-scope selected']"
-									: "div[class*='selectable-inputs-container'] > div:nth-child(1) > div"
-							)
-							?.textContent?.toLowerCase(),
-						category = document.querySelector(
-							appVersion === AppVersion.V4
-								? "ul.sort > li.selected"
-								: "div[class*='selectable-inputs-container'] > div:nth-child(2) > div"
-						)?.textContent,
-						genre =
-							document
-								.querySelector(
-									appVersion === AppVersion.V4
-										? "ul.genre-select > li.selected"
-										: "div[class*='selectable-inputs-container'] > div:nth-child(3) > div"
-								)
-								?.textContent?.replace("Select genre", "") || null;
+    if (searchValue) {
+      presenceData.details = `Searching for ${searchValue}`
+      presenceData.smallImageKey = Assets.Search
+      presence.setActivity(presenceData)
+      return
+    }
+  }
 
-					presenceData.buttons = [
-						{
-							label: "Browse",
-							url: href,
-						},
-					];
-					presenceData.details = `Discovering ${type ?? "content"}${
-						type === "series" ? "" : "s"
-					}`;
-					presenceData.state = `${category ?? "All"}${
-						genre ? ` | ${genre}` : ""
-					}`;
+  switch (appVersion) {
+    case AppVersion.V4:
+    case AppVersion.V5: {
+      const video = findVideo()
 
-					break;
-				}
-				case "library": {
-					const type = document.querySelector(
-						appVersion === AppVersion.V4
-							? "[class='ng-binding ng-scope selected']"
-							: "div[class*='selectable-inputs-container'] > div > div"
-					)?.textContent;
+      if (privacy) {
+        presenceData.state = video !== null ? 'Watching' : 'Browsing'
+        break
+      }
 
-					presenceData.details = "Library";
-					presenceData.state = type ?? "All";
-					presenceData.buttons = [
-						{
-							label: "View Library",
-							url: href,
-						},
-					];
-					break;
-				}
-				case "calendar":
-					presenceData.details = "Calendar";
-					presenceData.buttons = [
-						{
-							label: "View Calendar",
-							url: href,
-						},
-					];
-					break;
-				case "search":
-					presenceData.details = "Search";
-					break;
-				case "player": {
-					if (video === null) break;
+      switch (hash.replace('#/', '').split('/').shift()?.split('?').shift()) {
+        case '':
+          presenceData.state = 'Browsing'
+          presenceData.buttons = [
+            {
+              label: 'View Board',
+              url: href,
+            },
+          ]
+          break
+        case 'detail': {
+          if (appVersion === AppVersion.V4) {
+            presenceData.state = document.querySelector(
+              '#detail > div:nth-child(3) > div > div.sidebar-info-container > div > div.logo > div',
+            )?.textContent
+            presenceData.largeImageKey = document
+              .querySelector(
+                '#detail > div.details-less-info > div.details-top > div:nth-child(1)',
+              )
+              ?.firstElementChild
+              ?.getAttribute('src') ?? ActivityAssets.Logo
+          }
+          else {
+            const imgElement = document.querySelector(
+              'div[class*=\'meta-info-container\'] > img[class*=\'logo\']',
+            )
+            const routeContents = document.querySelectorAll('.route-content')
+            presenceData.largeImageKey = (routeContents.length > 1
+              ? routeContents[routeContents.length - 1]
+              : routeContents[0]
+            )?.querySelector('img')?.src
+            ?? imgElement?.getAttribute('src')
+            ?? ActivityAssets.Logo
+            presenceData.state = imgElement?.getAttribute('title')
+              ?? document.querySelector(
+                'div[class*=\'logo-placeholder\']:last-child',
+              )?.textContent
+          }
 
-					presenceData.endTimestamp = video.endTimestamp;
-					delete presenceData.startTimestamp;
+          const type = hash.split('/')[2]
+          presenceData.details = `Viewing a ${type}`
+          presenceData.buttons = [
+            {
+              label: `View ${type}`,
+              url: href,
+            },
+          ]
 
-					if (
-						(appVersion === AppVersion.V4
-							? document
-									.querySelector("#loading-logo")
-									.className.includes("flashing")
-							: !!document.querySelector(
-									"div[class*='buffering-loader-container']"
-							  )) ||
-						video.isPaused
-					) {
-						presenceData.smallImageKey = Assets.Pause;
-						presenceData.smallImageText = "Player is paused";
-						presenceData.state = "Paused";
-					} else {
-						presenceData.smallImageKey = Assets.Play;
-						presenceData.smallImageText = "Player is playing";
-						presenceData.state = "Watching";
-					}
+          break
+        }
+        case 'addons': {
+          const title = document.querySelector(
+            appVersion === AppVersion.V4
+              ? '[class=\'ng-scope selected\']'
+              : 'div[class*=\'addons-content\'] > div[class*=\'selectable-inputs-container\'] > div:nth-child(2) > div',
+          )?.textContent
+          const type = document.querySelector(
+            appVersion === AppVersion.V4
+              ? '[class=\'ng-binding ng-scope selected\']'
+              : 'div[class*=\'addons-content\'] > div[class*=\'selectable-inputs-container\'] > div:nth-child(3) > div',
+          )?.textContent
 
-					let metaUrl: string, title: string;
+          presenceData.details = `Browsing ${title
+            ?.toLowerCase()
+            ?.replace(' addons', '')} addons`
+          presenceData.state = type ?? 'All'
+          presenceData.buttons = [
+            {
+              label: 'Browse Addons',
+              url: href,
+            },
+          ]
+          break
+        }
+        case 'settings': {
+          const section = document.querySelector(
+            appVersion === AppVersion.V4
+              ? '[class=\'ng-scope ng-binding active\']'
+              : 'div[class*=\'settings-content\'] div[class*=\'selected\']',
+          )?.textContent ?? 'General'
+          presenceData.details = `${section} settings`
+          break
+        }
+        case 'discover': {
+          const type = document
+            .querySelector(
+              appVersion === AppVersion.V4
+                ? '[class=\'ng-binding ng-scope selected\']'
+                : 'div[class*=\'selectable-inputs-container\'] > div:nth-child(1) > div',
+            )
+            ?.textContent
+            ?.toLowerCase()
+          const category = document.querySelector(
+            appVersion === AppVersion.V4
+              ? 'ul.sort > li.selected'
+              : 'div[class*=\'selectable-inputs-container\'] > div:nth-child(2) > div',
+          )?.textContent
+          const genre = document
+            .querySelector(
+              appVersion === AppVersion.V4
+                ? 'ul.genre-select > li.selected'
+                : 'div[class*=\'selectable-inputs-container\'] > div:nth-child(3) > div',
+            )
+            ?.textContent
+            ?.replace('Select genre', '') || null
 
-					if (appVersion === AppVersion.V4) {
-						title = document
-							.querySelector("head > title")
-							?.textContent?.replace("Stremio -", "")
-							?.trim();
-						metaUrl = href
-							.substring(0, href.lastIndexOf("/"))
-							.replace("player", "detail");
-						presenceData.largeImageKey =
-							document
-								.querySelector("#loading-logo")
-								?.getAttribute("data-image") ?? Assets.Logo;
-					} else {
-						const playerState = await _eval(
-							"core.transport.getState('player')"
-						);
-						if (playerState.metaItem.type.toLowerCase() === "ready") {
-							const {
-								metaItem: { content },
-								seriesInfo: { season, episode },
-							} = playerState;
-							({ title } = playerState);
-							metaUrl = `${window.location.origin}/#/detail/${content.type}/${content.id}`;
-							if (content.type === "series")
-								metaUrl += `/${content.id}:${season}:${episode}`;
-							presenceData.largeImageKey = content.logo ?? Assets.Logo;
-						}
-					}
+          presenceData.buttons = [
+            {
+              label: 'Browse',
+              url: href,
+            },
+          ]
+          presenceData.details = `Discovering ${type ?? 'content'}${
+            type === 'series' ? '' : 's'
+          }`
+          presenceData.state = `${category ?? 'All'}${
+            genre && !['none', 'genre'].includes(genre.toLowerCase())
+              ? ` | ${genre}`
+              : ''
+          }`
 
-					presenceData.details = title ?? "Player";
-					if (metaUrl) {
-						presenceData.buttons = [
-							{
-								label: "Watch",
-								url: metaUrl,
-							},
-						];
-					}
-					break;
-				}
-			}
-			break;
-		}
-		case AppVersion.Website:
-			presenceData.details = "Visiting stremio.com";
+          break
+        }
+        case 'library': {
+          const type = document.querySelector(
+            appVersion === AppVersion.V4
+              ? '[class=\'ng-binding ng-scope selected\']'
+              : 'div[class*=\'selectable-inputs-container\'] > div > div',
+          )?.textContent
 
-			switch (pathname) {
-				case "/addon-sdk":
-					presenceData.state = "Addon SDK";
-					break;
+          presenceData.details = 'Library'
+          presenceData.state = type ?? 'All'
+          presenceData.buttons = [
+            {
+              label: 'View Library',
+              url: href,
+            },
+          ]
+          break
+        }
+        case 'calendar':
+          presenceData.details = 'Calendar'
+          presenceData.buttons = [
+            {
+              label: 'View Calendar',
+              url: href,
+            },
+          ]
+          break
+        case 'search':
+          presenceData.details = 'Searching'
+          break
+        case 'player': {
+          if (video === null)
+            break
 
-				case "/contribute":
-					presenceData.state = "Contribute";
-					break;
+          presenceData.endTimestamp = video.endTimestamp
+          presenceData.startTimestamp = video.startTimestamp
 
-				case "/community":
-					presenceData.state = "Community";
-					break;
+          if (
+            (appVersion === AppVersion.V4
+              ? document
+                  .querySelector('#loading-logo')
+                  ?.className
+                  .includes('flashing')
+              : !!document.querySelector(
+                  'div[class*=\'buffering-loader-container\']',
+                ))
+                || video.isPaused
+          ) {
+            presenceData.smallImageKey = Assets.Pause
+            presenceData.smallImageText = 'Paused'
+            presenceData.state = 'Paused'
+            delete presenceData.endTimestamp
+            presenceData.startTimestamp = browsingTimestamp
+          }
+          else {
+            presenceData.smallImageKey = Assets.Play
+            presenceData.smallImageText = 'Playing'
+            presenceData.state = 'Watching'
+          }
 
-				case "/technology":
-					presenceData.state = "Technology";
-					break;
+          let metaUrl: string | undefined
 
-				case "/competition":
-					presenceData.state = "Competition";
-					break;
+          if (appVersion === AppVersion.V4) {
+            presenceData.details = document
+              .querySelector('head > title')
+              ?.textContent
+              ?.replace('Stremio -', '')
+              ?.trim()
+            metaUrl = href
+              .substring(0, href.lastIndexOf('/'))
+              .replace('player', 'detail')
+            presenceData.largeImageKey = document
+              .querySelector('#loading-logo')
+              ?.getAttribute('data-image') ?? ActivityAssets.Logo
+          }
+          else {
+            const mediaSession = navigator.mediaSession
+            const mediaMetadata = mediaSession.metadata
+            const recentLibrary = JSON.parse(localStorage.library_recent) as RecentLibraryStorage
+            const mostRecent = Object.values(recentLibrary.items).reduce<RecentLibraryItem | null>(
+              (latest, item) =>
+                !latest || item._mtime > latest._mtime ? item : latest,
+              null,
+            )
 
-				case "/careers":
-					presenceData.state = "Careers";
-					break;
+            if (mediaSession?.playbackState !== 'none') {
+              if (mediaSession?.playbackState === 'paused') {
+                presenceData.smallImageKey = Assets.Pause
+                presenceData.smallImageText = 'Paused'
+                presenceData.state = 'Paused'
+                delete presenceData.endTimestamp
+                presenceData.startTimestamp = browsingTimestamp
+              }
+              else {
+                presenceData.smallImageKey = Assets.Play
+                presenceData.smallImageText = 'Playing'
+                presenceData.state = 'Watching'
+              }
 
-				default: {
-					const activeTab = document.querySelector("[class='active']");
-					if (
-						activeTab === null ||
-						activeTab.parentElement?.className === "langs"
-					)
-						break;
-					presenceData.state = activeTab.textContent;
-				}
-			}
+              metaUrl = `${window.location.origin}/#/detail/${mostRecent?.type}/${mostRecent?._id}`
+              presenceData.largeImageKey = mostRecent?.poster ?? ActivityAssets.Logo
+              presenceData.statusDisplayType = StatusDisplayType.Details
+              if (mostRecent?.type === 'series') {
+                metaUrl += `/${mostRecent?.state?.video_id}`
+                presenceData.details = mostRecent?.name
+                presenceData.state = mediaMetadata?.title
+                presenceData.largeImageText = `Season ${mostRecent?.state?.video_id.split(':')[1]}, Episode ${mostRecent?.state?.video_id.split(':')[2]}`
+              }
+              else {
+                presenceData.details = mediaMetadata?.title
+              }
+            }
+          }
+          if (metaUrl) {
+            presenceData.buttons = [
+              {
+                label: 'Watch',
+                url: metaUrl,
+              },
+            ]
+          }
+          break
+        }
+      }
+      break
+    }
+    case AppVersion.Website:
+      presenceData.details = 'Visiting stremio.com'
 
-			break;
-	}
+      switch (pathname) {
+        case '/addon-sdk':
+          presenceData.state = 'Addon SDK'
+          break
 
-	if (!buttons) delete presenceData.buttons;
-	if (!thumbnails) presenceData.largeImageKey = Assets.Logo;
-	if (presenceData.details) presence.setActivity(presenceData);
-	else presence.setActivity();
-});
+        case '/contribute':
+          presenceData.state = 'Contribute'
+          break
+
+        case '/community':
+          presenceData.state = 'Community'
+          break
+
+        case '/technology':
+          presenceData.state = 'Technology'
+          break
+
+        case '/competition':
+          presenceData.state = 'Competition'
+          break
+
+        case '/careers':
+          presenceData.state = 'Careers'
+          break
+
+        default: {
+          const activeTab = document.querySelector('[class=\'nav-link active\']')
+          if (
+            activeTab === null
+            || activeTab.parentElement?.className === 'langs'
+          ) {
+            break
+          }
+          presenceData.state = activeTab.textContent
+        }
+      }
+
+      break
+  }
+
+  if (!buttons)
+    delete presenceData.buttons
+  if (!thumbnails)
+    presenceData.largeImageKey = ActivityAssets.Logo
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.clearActivity()
+})

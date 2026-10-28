@@ -1,25 +1,75 @@
 {
-	"$schema": "https://schemas.premid.app/metadata/1.10",
-	"author": {
-		"name": "Mirax",
-		"id": "223355525826347018"
-	},
-	"service": "Mangalib",
-	"description": {
-		"ru": "Сайт для прочтения манги на русском языке.",
-		"en": "Website for reading manga in Russian",
-		"nl": "Website voor het lezen van manga in het Russisch"
-	},
-	"url": "mangalib.me",
-	"version": "1.4.19",
-	"logo": "https://cdn.rcd.gg/PreMiD/websites/M/Mangalib/assets/logo.png",
-	"thumbnail": "https://cdn.rcd.gg/PreMiD/websites/M/Mangalib/assets/thumbnail.png",
-	"color": "#ff8c00",
-	"category": "other",
-	"tags": [
-		"manga",
-		"mangalib",
-		"read",
-		"anime"
-	]
+  "$schema": "https://schemas.premid.app/metadata/1.17",
+  "apiVersion": 1,
+  "author": {
+    "name": "Mirax",
+    "id": "223355525826347018"
+  },
+  "contributors": [
+    {
+      "name": "Keita",
+      "id": "437154602626973697"
+    }
+  ],
+  "service": "Mangalib",
+  "altnames": [
+    "RanobeLib",
+    "AnimeLib"
+  ],
+  "description": {
+    "en": "MangaLib, RanobeLib, and AnimeLib are also supported. These are Russian-language websites for reading manga and light novels, as well as watching anime.",
+    "ru": "Также поддерживаются MangaLib, RanobeLib и AnimeLib. Это русскоязычные платформы для чтения манги и ранобэ, а также для просмотра аниме."
+  },
+  "url": [
+    "mangalib.me",
+    "mangalib.org",
+    "ranobelib.me",
+    "v1.novelslib.me",
+    "anilib.me",
+    "animelib.org",
+    "v1.animelib.org",
+    "v2.animelib.org",
+    "v3.animelib.org",
+    "v4.animelib.org",
+    "v5.animelib.org"
+  ],
+  "regExp": "^https?[:][/][/](mangalib[.]me|mangalib[.]org|ranobelib[.]me|(v1)[.]novelslib[.]me|anilib[.]me|((v1|v2|v3|v4|v5)[.])?animelib[.]org)[/]",
+  "version": "1.6.1",
+  "logo": "https://cdn.rcd.gg/PreMiD/websites/M/Mangalib/assets/logo.png",
+  "thumbnail": "https://cdn.rcd.gg/PreMiD/websites/M/Mangalib/assets/thumbnail.jpeg",
+  "color": "#ff8c00",
+  "category": "other",
+  "tags": [
+    "manga",
+    "ranobe",
+    "anime"
+  ],
+  "iframe": true,
+  "iFrameRegExp": "kodik[.]info",
+  "settings": [
+    {
+      "id": "privacy",
+      "title": "Приватный режим",
+      "icon": "fad fa-shield-alt",
+      "value": false
+    },
+    {
+      "id": "buttons",
+      "title": "Показывать кнопки",
+      "icon": "fas fa-compress-arrows-alt",
+      "if": {
+        "privacy": false
+      },
+      "value": true
+    },
+    {
+      "id": "animeTitleAsPresence",
+      "title": "Отображать аниме в статусе",
+      "icon": "fad fa-user-edit",
+      "if": {
+        "privacy": false
+      },
+      "value": false
+    }
+  ]
 }

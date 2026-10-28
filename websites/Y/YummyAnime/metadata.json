@@ -1,32 +1,58 @@
 {
-	"$schema": "https://schemas.premid.app/metadata/1.10",
-	"author": {
-		"name": "Bas950",
-		"id": "241278257335500811"
-	},
-	"contributors": [
-		{
-			"name": "Striker",
-			"id": "215509157837537280"
-		}
-	],
-	"service": "YummyAnime",
-	"description": {
-		"en": "Watch anime online (Russion Subbed) in high quality and direct download for FREE! New anime manga daily added.",
-		"nl": "Bekijk anime online (Russion Subbed) in hoge kwaliteit en direct gratis downloaden! Nieuwe anime-manga dagelijks toegevoegd.",
-		"zh_CN": "在线观看及免费下载高画质俄语字幕的动漫，每日更新新动漫和番剧。",
-		"ga_IE": "Féach anime ar líne (Russion Subbed) ar ardchaighdeán agus íoslódáil díreach SAOR IN AISCE! Manga anime nua curtha leis go laethúil."
-	},
-	"url": "yummyanime.org",
-	"version": "1.1.29",
-	"logo": "https://cdn.rcd.gg/PreMiD/websites/Y/YummyAnime/assets/logo.png",
-	"thumbnail": "https://cdn.rcd.gg/PreMiD/websites/Y/YummyAnime/assets/thumbnail.png",
-	"color": "#ff6766",
-	"category": "anime",
-	"tags": [
-		"anime",
-		"videos"
-	],
-	"iframe": true,
-	"iFrameRegExp": ".*"
+  "$schema": "https://schemas.premid.app/metadata/1.17",
+  "apiVersion": 1,
+  "author": {
+    "id": "1045800378228281345",
+    "name": "harryys"
+  },
+  "contributors": [
+    {
+      "name": "ch1ka",
+      "id": "636569298936004608"
+    }
+  ],
+  "service": "YummyAnime",
+  "description": {
+    "en": "Free anime streaming site with user lists and community features.",
+    "ru": "Сайт для бесплатного просмотра аниме, ведения списков и общения.",
+    "uk": "Сайт для безкоштовного перегляду аніме, ведення списків та спілкування."
+  },
+  "url": [
+    "yummyani.me",
+    "yummy-ani.me",
+    "old.yummyani.me",
+    "old.yummy-ani.me",
+    "new.yummyani.me",
+    "new.yummy-ani.me"
+  ],
+  "regExp": "^https?[:][/][/](www[.])?(old[.])?(new[.])?(en[.])?(ru[.])?(uk[.])?yummy-?ani[.]me[/]",
+  "version": "1.2.3",
+  "logo": "https://cdn.rcd.gg/PreMiD/websites/Y/YummyAnime/assets/logo.png",
+  "thumbnail": "https://cdn.rcd.gg/PreMiD/websites/Y/YummyAnime/assets/thumbnail.png",
+  "color": "#FF6666",
+  "category": "anime",
+  "tags": [
+    "anime",
+    "video"
+  ],
+  "iframe": true,
+  "iFrameRegExp": "(kodik[.](info|cc|biz|online)|kodikplayer[.]com|aniqit[.]com|alloha[.]yani[.]tv|player[.]cdnvideohub[.]com|iframeCVH[.]html|vkuker[.]net|player[.]aksor[.]tv|yummyplayer[.]me)",
+  "settings": [
+    {
+      "id": "showButtons",
+      "title": "Show Buttons",
+      "icon": "fas fa-compress-arrows-alt",
+      "value": true
+    },
+    {
+      "id": "lang",
+      "multiLanguage": true
+    },
+    {
+      "id": "privacyMode",
+      "title": "Privacy mode",
+      "icon": "fas fa-user-secret",
+      "value": false
+    }
+  ]
 }

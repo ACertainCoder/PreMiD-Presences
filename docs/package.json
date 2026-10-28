@@ -1,0 +1,17 @@
+{
+  "name": "premid-activity-docs",
+  "description": "Documentation for PreMiD Activity Development",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "markdown-it": "^15.0.0",
+    "typescript": "^6.0.3",
+    "vitepress": "^2.0.0-alpha.19"
+  }
+}
